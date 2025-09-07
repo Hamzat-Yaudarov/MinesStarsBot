@@ -46,9 +46,10 @@ bot.hears('💳 Пополнить', async (ctx) => {
   );
 });
 
-bot.on('callback_query:data', async (ctx) => {
+bot.on('callback_query', async (ctx) => {
+  console.log('callback_query', { from: ctx.from?.id, data: ctx.callbackQuery?.data });
   const data = ctx.callbackQuery.data;
-  if (data.startsWith('pay:')) {
+  if (data && data.startsWith('pay:')) {
     const stars = Number(data.split(':')[1]);
     const prices = [{ label: `${stars}⭐️`, amount: stars }];
     console.log('Attempting to send invoice', { user: ctx.from.id, stars, payload: `deposit:${stars}:${Date.now()}` });
@@ -67,12 +68,17 @@ bot.on('callback_query:data', async (ctx) => {
       console.error('Invoice send error', e);
     }
     await ctx.answerCallbackQuery();
+  } else {
+    // let other handlers process callback_query
+    await ctx.answerCallbackQuery().catch(()=>{});
   }
 });
 
 bot.on('pre_checkout_query', async (ctx) => {
+  console.log('pre_checkout_query', { from: ctx.from?.id, query: ctx.update.pre_checkout_query });
   await ctx.answerPreCheckoutQuery(true);
 });
+
 
 bot.on('message:successful_payment', async (ctx) => {
   console.log('Received successful_payment update', { from: ctx.from?.id, update: ctx.update });
@@ -124,7 +130,27 @@ app.get('/ready', async (req, res) => {
 process.on('unhandledRejection', (r) => console.error('UnhandledRejection', r));
 process.on('uncaughtException', (err) => console.error('UncaughtException', err));
 
-// start express then bot
+// optional simulate payment endpoint for testing (enable by setting SIM_SECRET env)
+if (process.env.SIM_SECRET) {
+  app.post('/simulate-payment', express.json(), async (req, res) => {
+    const secret = req.headers['x-sim-secret'] || req.body.secret;
+    if (secret !== process.env.SIM_SECRET) return res.status(403).json({ ok: false, error: 'forbidden' });
+    const { user_id, amount } = req.body;
+    if (!user_id || !amount) return res.status(400).json({ ok: false, error: 'user_id and amount required' });
+    try {
+      await pool.query('insert into users(id, username) values ($1,$2) on conflict (id) do nothing', [user_id, null]);
+      await pool.query('update users set stars = stars + $2 where id = $1', [user_id, amount]);
+      await pool.query('insert into payments(user_id, stars, payload) values ($1,$2,$3)', [user_id, amount, 'simulate']);
+      await pool.query('insert into transactions(user_id, kind, amount_stars, meta) values ($1,$2,$3,$4)', [user_id, 'simulate_deposit', amount, JSON.stringify({ simulated: true })]);
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error('simulate-payment error', e);
+      return res.status(500).json({ ok: false, error: String(e) });
+    }
+  });
+  console.log('Simulate payment endpoint enabled at POST /simulate-payment (requires SIM_SECRET)');
+}
+
 app.listen(PORT, async () => {
   console.log(`Health server listening on ${PORT}`);
   try {
