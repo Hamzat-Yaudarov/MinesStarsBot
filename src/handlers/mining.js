@@ -99,15 +99,83 @@ async function doMine(ctx) {
   const msg = await ctx.editMessageText(frames[0]);
   for (let i=1;i<frames.length;i++) { await sleep(300); await ctx.api.editMessageText(ctx.chat.id, msg.message_id, frames[i]); }
 
-  // RNG
-  const table = DROP_TABLE[Math.max(0, Math.min(10, lvl))];
-  const drops = { coal:0, copper:0, iron:0, gold:0, diamond:0 };
-  for (const key of Object.keys(table)) {
-    const roll = Math.random();
-    if (roll < table[key].chance) {
-      drops[key] = randInt(table[key].min, table[key].max);
+    // RNG based on base chances and ranges, then enforce MC limit by pickaxe level
+  const baseTable = {
+    coal: { chance: 0.50, min: 70, max: 400 },
+    copper: { chance: 0.20, min: 30, max: 65 },
+    iron: { chance: 0.15, min: 12, max: 20 },
+    gold: { chance: 0.08, min: 5, max: 7 },
+    diamond: { chance: 0.07, min: 1, max: 2 }
+  };
+
+  const LEVEL_LIMITS = {
+    1: 350,
+    2: 450,
+    3: 700,
+    4: 900,
+    5: 1150,
+    6: 1400,
+    7: 1700,
+    8: 2250,
+    9: 2400,
+    10: 2750
+  };
+
+  const level = Math.max(1, Math.min(10, lvl));
+  const limit = LEVEL_LIMITS[level] || LEVEL_LIMITS[1];
+
+  const potential = {};
+  let totalValue = 0;
+  for (const key of Object.keys(baseTable)) {
+    if (Math.random() < baseTable[key].chance) {
+      const amount = randInt(baseTable[key].min, baseTable[key].max);
+      const value = amount * Resource[key].price;
+      potential[key] = { amount, value };
+      totalValue += value;
+    } else {
+      potential[key] = { amount: 0, value: 0 };
     }
   }
+
+  // If totalValue exceeds limit, scale down amounts proportionally and adjust
+  if (totalValue > limit) {
+    const scale = limit / totalValue;
+    totalValue = 0;
+    for (const key of Object.keys(potential)) {
+      const orig = potential[key].amount;
+      const scaled = Math.floor(orig * scale);
+      potential[key].amount = scaled;
+      potential[key].value = scaled * Resource[key].price;
+      totalValue += potential[key].value;
+    }
+    // ensure we didn't exceed due to rounding; if still less than limit by gap, try to add units starting from cheapest resource
+    let gap = limit - totalValue;
+    const keysByPriceAsc = Object.keys(Resource).sort((a,b)=>Resource[a].price - Resource[b].price);
+    while (gap > 0) {
+      let added = false;
+      for (const k of keysByPriceAsc) {
+        // only add if originally had some amount (so we don't introduce new resource types)
+        if ((potential[k].amount || 0) < (baseTable[k].max || 0) && (potential[k].amount || 0) > 0) {
+          potential[k].amount += 1;
+          potential[k].value += Resource[k].price;
+          gap -= Resource[k].price;
+          added = true;
+          if (gap <= 0) break;
+        }
+      }
+      if (!added) break;
+    }
+    // recompute totalValue
+    totalValue = Object.keys(potential).reduce((s,k)=>s+ (potential[k].value||0), 0);
+  }
+
+  const drops = {
+    coal: potential.coal.amount || 0,
+    copper: potential.copper.amount || 0,
+    iron: potential.iron.amount || 0,
+    gold: potential.gold.amount || 0,
+    diamond: potential.diamond.amount || 0
+  };
 
   // Apply
   await pool.query('update users set last_mine_at = now(), updated_at = now() where id=$1', [userId]);
@@ -120,7 +188,8 @@ async function doMine(ctx) {
     drops.copper? `${Resource.copper.emoji} Медь: +${drops.copper}`: null,
     drops.iron? `${Resource.iron.emoji} Железо: +${drops.iron}`: null,
     drops.gold? `${Resource.gold.emoji} Золото: +${drops.gold}`: null,
-    drops.diamond? `${Resource.diamond.emoji} Алмазы: +${drops.diamond}`: null
+    drops.diamond? `${Resource.diamond.emoji} Алмазы: +${drops.diamond}`: null,
+    `\nВсего: ${fmtCoins(totalValue)} (лимит уровня ${level}: ${limit} MC)`
   ].filter(Boolean).join('\n');
 
   const kb = new InlineKeyboard().text('💰 Продать', 'sell:menu');

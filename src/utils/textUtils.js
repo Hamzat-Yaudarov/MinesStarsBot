@@ -16,10 +16,10 @@ export const MAIN_MENU = {
 
 export const Resource = {
   coal: { name: 'Уголь', price: 1, emoji: '🪨' },
-  copper: { name: 'Медь', price: 3, emoji: '🥉' },
-  iron: { name: 'Железо', price: 10, emoji: '⛓️' },
-  gold: { name: 'Золото', price: 30, emoji: '🥇' },
-  diamond: { name: 'Алмаз', price: 100, emoji: '💎' }
+  copper: { name: 'Медь', price: 2, emoji: '🥉' },
+  iron: { name: 'Железо', price: 4, emoji: '⛓️' },
+  gold: { name: 'Золото', price: 5, emoji: '🥇' },
+  diamond: { name: 'Алмаз', price: 7, emoji: '💎' }
 };
 
 export const PICKAXE_PRICES = [
