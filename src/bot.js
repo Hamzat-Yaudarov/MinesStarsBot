@@ -51,6 +51,7 @@ bot.on('callback_query:data', async (ctx) => {
   if (data.startsWith('pay:')) {
     const stars = Number(data.split(':')[1]);
     const prices = [{ label: `${stars}⭐️`, amount: stars }];
+    console.log('Attempting to send invoice', { user: ctx.from.id, stars, payload: `deposit:${stars}:${Date.now()}` });
     try {
       await ctx.api.sendInvoice({
         chat_id: ctx.chat.id,
@@ -61,6 +62,7 @@ bot.on('callback_query:data', async (ctx) => {
         prices,
         provider_token: ''
       });
+      console.log('Invoice sent');
     } catch (e) {
       console.error('Invoice send error', e);
     }
@@ -73,6 +75,7 @@ bot.on('pre_checkout_query', async (ctx) => {
 });
 
 bot.on('message:successful_payment', async (ctx) => {
+  console.log('Received successful_payment update', { from: ctx.from?.id, update: ctx.update });
   const { successful_payment } = ctx.update.message;
   const total = Number(successful_payment.total_amount);
   const userId = ctx.from.id;
