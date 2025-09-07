@@ -22,7 +22,7 @@ async function showProfile(ctx) {
 
   const kb = new InlineKeyboard()
     .text('🔗 Реф. ссылка', 'profile:ref').row()
-    .text('💰 Продать всё', 'mine:sellall').row();
+    .text('💰 Продать', 'sell:menu').row();
 
   const text = [
     `Профиль @${ctx.from.username || userId}`,
