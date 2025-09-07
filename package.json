@@ -1,0 +1,16 @@
+{
+  "name": "mines-stars-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node src/bot.js"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.11",
+    "grammy": "^1.22.4",
+    "pg": "^8.11.5"
+  }
+}

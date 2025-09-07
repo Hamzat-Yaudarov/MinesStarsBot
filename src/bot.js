@@ -1,0 +1,83 @@
+import { Bot, InlineKeyboard } from 'grammy';
+import { migrate, pool } from './database.js';
+import { MAIN_MENU, fmtCoins, fmtStars, COINS_PER_STAR } from './utils/textUtils.js';
+import { registerStart } from './commands/start.js';
+import { registerProfile } from './handlers/profile.js';
+import { registerMining } from './handlers/mining.js';
+import { registerShop } from './handlers/shop.js';
+import { registerCases } from './handlers/cases.js';
+import { registerGames } from './handlers/games.js';
+import { registerWithdraw } from './handlers/withdraw.js';
+
+const token = process.env.BOT_TOKEN;
+if (!token) throw new Error('BOT_TOKEN is not set');
+
+await migrate();
+const bot = new Bot(token);
+
+registerStart(bot);
+registerProfile(bot);
+registerMining(bot);
+registerShop(bot);
+registerCases(bot);
+registerGames(bot);
+registerWithdraw(bot);
+
+bot.hears('💳 Пополнить', async (ctx) => {
+  const amounts = [50, 100, 200, 500, 1000, 2500];
+  const kb = new InlineKeyboard();
+  for (const a of amounts) kb.text(`${a} ⭐️`, `pay:${a}`).row();
+  await ctx.reply(
+    'Пополнение Stars (XTR)\nВыберите сумму. После оплаты Stars будут начислены на баланс.\n\nКурс: 1 ⭐️ = 200 MC',
+    { reply_markup: kb }
+  );
+});
+
+bot.on('callback_query:data', async (ctx) => {
+  const data = ctx.callbackQuery.data;
+  if (data.startsWith('pay:')) {
+    const stars = Number(data.split(':')[1]);
+    const prices = [{ label: `${stars}⭐️`, amount: stars }];
+    await ctx.api.sendInvoice({
+      chat_id: ctx.chat.id,
+      title: `Пополнение на ${stars} ⭐️`,
+      description: 'Оплата внутренней валюты бота Telegram Stars (XTR) для игр и покупок',
+      payload: `deposit:${stars}:${Date.now()}`,
+      currency: 'XTR',
+      prices,
+      provider_token: ''
+    });
+    await ctx.answerCallbackQuery();
+  }
+});
+
+bot.on('pre_checkout_query', async (ctx) => {
+  await ctx.answerPreCheckoutQuery(true);
+});
+
+bot.on('message:successful_payment', async (ctx) => {
+  const { successful_payment } = ctx.update.message;
+  const total = Number(successful_payment.total_amount);
+  const userId = ctx.from.id;
+  await pool.query('insert into users(id, username) values ($1,$2) on conflict (id) do update set username=excluded.username', [userId, ctx.from.username || null]);
+  await pool.query('update users set stars = stars + $2, updated_at = now() where id = $1', [userId, total]);
+  await pool.query('insert into payments(user_id, stars, payload) values ($1,$2,$3)', [userId, total, successful_payment.invoice_payload]);
+  await pool.query('insert into transactions(user_id, kind, amount_stars, meta) values ($1,$2,$3,$4)', [userId, 'deposit', total, JSON.stringify({ payload: successful_payment.invoice_payload })]);
+  const ref = await pool.query('select referred_by from users where id=$1', [userId]);
+  const referredBy = ref.rows[0]?.referred_by;
+  if (referredBy) {
+    const bonus = Math.floor(total * 0.05);
+    await pool.query('update users set stars = stars + $2 where id=$1', [referredBy, bonus]);
+    try {
+      await ctx.api.sendMessage(referredBy, `Ваш реферал пополнил на ${fmtStars(total)}. Начислено 5%: ${fmtStars(bonus)}.`);
+    } catch (_) {}
+  }
+  await ctx.reply(`Оплата получена: ${fmtStars(total)} зачислены на баланс.`, MAIN_MENU);
+});
+
+
+
+bot.catch((err) => console.error('Bot error', err));
+
+bot.start();
+console.log('Mines Stars bot started');
