@@ -69,6 +69,12 @@ export async function migrate() {
       created_at timestamptz not null default now()
     );
 
+    create table if not exists pending_sales (
+      user_id bigint primary key references users(id) on delete cascade,
+      resource text not null,
+      created_at timestamptz not null default now()
+    );
+
     create index if not exists idx_payments_user_id on payments(user_id);
     create index if not exists idx_tx_user_id on transactions(user_id);
   `);

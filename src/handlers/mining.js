@@ -31,9 +31,42 @@ export function registerMining(bot) {
   bot.callbackQuery('sell:menu', async (ctx) => sellMenu(ctx));
   bot.callbackQuery(/sell:res:(\w+):all/, async (ctx) => sellResourceAll(ctx));
   bot.callbackQuery(/sell:res:(\w+):pct:(\d+)/, async (ctx) => sellResourcePct(ctx));
+  bot.callbackQuery(/sell:res:(\w+):custom/, async (ctx) => sellResourceCustom(ctx));
   bot.callbackQuery(/sell:confirm:(\w+):(pct):(\d+)/, async (ctx) => sellConfirm(ctx));
   bot.callbackQuery('sell:cancel', async (ctx) => sellCancel(ctx));
   bot.callbackQuery('noop', async (ctx) => { await ctx.answerCallbackQuery(); });
+
+  // message handler for pending custom sales
+  bot.on('message:text', async (ctx) => {
+    try {
+      const userId = ctx.from.id;
+      const r = await pool.query('select * from pending_sales where user_id=$1', [userId]);
+      if (r.rowCount === 0) return; // nothing pending
+      const pending = r.rows[0];
+      const text = String(ctx.message.text).trim();
+      if (/^отмена$/i.test(text) || /^cancel$/i.test(text)) {
+        await pool.query('delete from pending_sales where user_id=$1', [userId]);
+        await ctx.reply('Продажа отменена.');
+        return openMine(ctx);
+      }
+      const qty = Math.floor(Number(text.replace(/[^0-9]/g, '')) || 0);
+      if (!qty || qty <= 0) return ctx.reply('Введите корректное количество (числом) или напишите Отмена.');
+      const resq = await pool.query('select * from user_resources where user_id=$1', [userId]);
+      const resources = resq.rows[0];
+      const have = Number(resources[pending.resource] || 0);
+      if (have < qty) return ctx.reply(`У вас нет столько ${pending.resource}. Доступно: ${have}`);
+      const price = Resource[pending.resource].price;
+      const total = qty * price;
+      await pool.query('update users set coins = coins + $2 where id=$1', [userId, total]);
+      await pool.query(`update user_resources set ${pending.resource} = ${pending.resource} - $2 where user_id=$1`, [userId, qty]);
+      await pool.query('insert into transactions(user_id, kind, amount_coins, meta) values ($1,$2,$3,$4)', [userId, 'sell_resource', total, JSON.stringify({ resource: pending.resource, amount: qty })]);
+      await pool.query('delete from pending_sales where user_id=$1', [userId]);
+      await ctx.reply(`Продано ${qty} ${pending.resource} на ${fmtCoins(total)}.`);
+      return openMine(ctx);
+    } catch (e) {
+      console.error('pending sell handler error', e);
+    }
+  });
 }
 
 async function openMine(ctx) {
@@ -102,14 +135,19 @@ async function sellMenu(ctx) {
   const kb = new InlineKeyboard();
   const pctButtons = [25,50,75,100];
   kb.text(`${Resource.coal.emoji} Уголь: ${res.coal} ➜ Продать всё`, `sell:res:coal:all`).row();
+  kb.text(`${Resource.coal.emoji} Уголь: Продать часть (ввести)`, `sell:res:coal:custom`).row();
   kb.text(`${Resource.coal.emoji} Уголь: Продать 25%`, `sell:res:coal:pct:25`).text(`Продать 50%`, `sell:res:coal:pct:50`).row();
   kb.text(`${Resource.copper.emoji} Медь: ${res.copper} ➜ Продать всё`, `sell:res:copper:all`).row();
+  kb.text(`${Resource.copper.emoji} Медь: Продать часть (ввести)`, `sell:res:copper:custom`).row();
   kb.text(`${Resource.copper.emoji} Медь: Продать 25%`, `sell:res:copper:pct:25`).text(`Продать 50%`, `sell:res:copper:pct:50`).row();
-  kb.text(`${Resource.iron.emoji} Железо: ${res.iron} ➜ Продать всё`, `sell:res:iron:all`).row();
+  kb.text(`${Resource.iron.emoji} ��елезо: ${res.iron} ➜ Продать всё`, `sell:res:iron:all`).row();
+  kb.text(`${Resource.iron.emoji} Железо: Продать часть (ввести)`, `sell:res:iron:custom`).row();
   kb.text(`${Resource.iron.emoji} Железо: Продать 25%`, `sell:res:iron:pct:25`).text(`Продать 50%`, `sell:res:iron:pct:50`).row();
   kb.text(`${Resource.gold.emoji} Золото: ${res.gold} ➜ Продать всё`, `sell:res:gold:all`).row();
+  kb.text(`${Resource.gold.emoji} Золото: Продать часть (ввести)`, `sell:res:gold:custom`).row();
   kb.text(`${Resource.gold.emoji} Золото: Продать 25%`, `sell:res:gold:pct:25`).text(`Продать 50%`, `sell:res:gold:pct:50`).row();
   kb.text(`${Resource.diamond.emoji} Алмазы: ${res.diamond} ➜ Продать всё`, `sell:res:diamond:all`).row();
+  kb.text(`${Resource.diamond.emoji} Алмазы: Продать часть (ввести)`, `sell:res:diamond:custom`).row();
   kb.text(`${Resource.diamond.emoji} Алмазы: Продать 25%`, `sell:res:diamond:pct:25`).text(`Продать 50%`, `sell:res:diamond:pct:50`).row();
   kb.text('🔙 Назад', 'mine:open');
   await ctx.editMessageText('Продажа ресурсов — выберите ресурс:', { reply_markup: kb });
@@ -149,6 +187,19 @@ async function sellResourcePct(ctx) {
   // confirm keyboard
   const kb = new InlineKeyboard().text('✅ Подтвердить', `sell:confirm:${resource}:pct:${pct}`).text('❌ Отменить', 'sell:cancel');
   await ctx.editMessageText(`Вы хотите продать ${sellAmount} ${resource} (${pct}%) за ${fmtCoins(total)}?`, { reply_markup: kb });
+}
+
+async function sellResourceCustom(ctx) {
+  const data = ctx.callbackQuery.data; // sell:res:coal:custom
+  const parts = data.split(':');
+  const resource = parts[2];
+  const userId = ctx.from.id;
+  const r = await pool.query('select * from user_resources where user_id=$1', [userId]);
+  const res = r.rows[0];
+  const have = Number(res[resource] || 0);
+  if (!have || have <= 0) return ctx.answerCallbackQuery({ text: 'У вас нет этого ресурса', show_alert: true });
+  await pool.query('insert into pending_sales(user_id, resource, created_at) values ($1,$2,now()) on conflict (user_id) do update set resource=excluded.resource, created_at=now()', [userId, resource]);
+  await ctx.editMessageText(`Введите количество ${resource} для продажи. Доступно: ${have}.\nОтправьте число или напишите "Отмена".`);
 }
 
 async function sellConfirm(ctx) {
