@@ -8,21 +8,33 @@ export function registerShop(bot) {
     const user = await getUser(ctx.from.id);
     if (!user) return ctx.reply('Сначала /start');
 
+    const lvl = Number(user.pickaxe_level);
+    let text = '🛒 Магазин\n';
+    if (lvl === 0) {
+      text += 'Кирка: отсутствует\nКупите первую кирку за 10,000 MC или 50 ⭐\n';
+    } else {
+      text += `Кирка: уровень ${lvl}\n`;
+      if (lvl < 10) {
+        const next = lvl + 1;
+        const cost = PICKAXE_LEVEL_COST_MC[next];
+        text += `Следующее улучшение: ур. ${next} — ${cost.toLocaleString()} MC\n`;
+      } else {
+        text += 'Кирка максимального уровня\n';
+      }
+    }
+
     const buttons = [];
-    if (user.pickaxe_level === 0) {
+    if (lvl === 0) {
       buttons.push([{ text: '⛏️ Купить кирку (10,000 MC)', callback_data: 'shop:pickaxe:mc' }]);
       buttons.push([{ text: '⛏️ Купить кирку (50 ⭐)', callback_data: 'shop:pickaxe:stars' }]);
-    } else {
-      const lvl = Number(user.pickaxe_level);
-      const next = Math.min(10, lvl + 1);
+    } else if (lvl < 10) {
+      const next = lvl + 1;
       const cost = PICKAXE_LEVEL_COST_MC[next];
-      buttons.push([{ text: `⛏️ Кирка ур. ${lvl}`, callback_data: 'noop' }]);
-      if (lvl < 10) buttons.push([{ text: `🔧 Улучшить до ур. ${next} (${cost.toLocaleString()} MC)`, callback_data: `shop:upgrade:${next}` }]);
-      else buttons.push([{ text: '✅ Максимальный уровень', callback_data: 'noop' }]);
+      buttons.push([{ text: `🔧 Улучшить до ур. ${next} (${cost.toLocaleString()} MC)`, callback_data: `shop:upgrade:${next}` }]);
     }
     buttons.push([{ text: '🔄 Обмен MC ↔️ ⭐', callback_data: 'shop:exchange' }]);
 
-    await ctx.reply('🛒 Магазин', { reply_markup: { inline_keyboard: buttons } });
+    await ctx.reply(text, { reply_markup: { inline_keyboard: buttons } });
   });
 
   bot.on('callback_query', async (ctx, next) => {
@@ -34,16 +46,16 @@ export function registerShop(bot) {
     if (data.startsWith('shop:upgrade:')) {
       const next = Number(data.split(':')[2]);
       const lvl = Number(user.pickaxe_level);
-      if (!Number.isInteger(next) || next !== lvl + 1 || next < 1 || next > 10) { await ctx.answerCbQuery('Некорректный уровень'); return; }
+      if (!Number.isInteger(next) || next !== lvl + 1 || next < 1 || next > 10) { await ctx.answerCbQuery('Некорректный уровень', { show_alert: true }); return; }
       const cost = PICKAXE_LEVEL_COST_MC[next];
-      if (Number(user.balance_mc||0) < cost) { await ctx.answerCbQuery('Не хватает MC'); return; }
+      if (Number(user.balance_mc||0) < cost) { await ctx.answerCbQuery('Не хватает MC', { show_alert: true }); return; }
       await updateUser(user.tg_id, { balance_mc: Number(user.balance_mc) - cost, pickaxe_level: next });
       await ctx.editMessageText(`✅ Улучшение: ур. ${lvl} → ур. ${next} (−${cost.toLocaleString()} MC)`);
       return ctx.answerCbQuery('Готово');
     }
 
     if (data === 'shop:exchange') {
-      await ctx.editMessageText('Выберите направлен��е обмена:', {
+      await ctx.editMessageText('Выберите направление обмена:', {
         reply_markup: {
           inline_keyboard: [
             [{ text: `MC → ⭐ (1⭐ = ${MC_PER_STAR} MC)`, callback_data: 'shop:exchange:mc2stars' }],
@@ -62,16 +74,16 @@ export function registerShop(bot) {
     }
 
     if (data === 'shop:pickaxe:mc') {
-      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена'); return; }
-      if (Number(user.balance_mc||0) < 10000) { await ctx.answerCbQuery('Не хватает MC'); return; }
+      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена', { show_alert: true }); return; }
+      if (Number(user.balance_mc||0) < 10000) { await ctx.answerCbQuery('Не хватает MC', { show_alert: true }); return; }
       await updateUser(user.tg_id, { balance_mc: Number(user.balance_mc) - 10000, pickaxe_level: 1 });
       await ctx.editMessageText('✅ Кирка куплена за 10,000 MC. Теперь можно копать!');
       return ctx.answerCbQuery('Готово');
     }
 
     if (data === 'shop:pickaxe:stars') {
-      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена'); return; }
-      if (Number(user.balance_stars||0) < 50) { await ctx.answerCbQuery('Не хватает ⭐'); return; }
+      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена', { show_alert: true }); return; }
+      if (Number(user.balance_stars||0) < 50) { await ctx.answerCbQuery('Не хватает ⭐', { show_alert: true }); return; }
       await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 50, pickaxe_level: 1 });
       await ctx.editMessageText('✅ Кирка куплена за 50 ⭐. Теперь можно копать!');
       return ctx.answerCbQuery('Готово');
