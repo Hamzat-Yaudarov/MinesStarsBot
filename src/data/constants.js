@@ -1,9 +1,9 @@
 export const RESOURCES = [
-  { key: 'coal', name: 'Уголь', emoji: '⬛', priceMc: 1, chance: 1, min: 70, max: 400 },
-  { key: 'copper', name: 'Медь', emoji: '🟫', priceMc: 2, chance: 0.50, min: 30, max: 65 },
-  { key: 'iron', name: 'Железо', emoji: '⚙️', priceMc: 4, chance: 0.35, min: 12, max: 20 },
-  { key: 'gold', name: 'Золото', emoji: '🟨', priceMc: 5, chance: 0.14, min: 5, max: 7 },
-  { key: 'diamond', name: 'Алмаз', emoji: '💎', priceMc: 7, chance: 0.08, min: 1, max: 2 }
+  { key: 'coal', name: 'Уголь', emoji: '⬛', priceMc: 1, chance: 0.5, min: 70, max: 400 },
+  { key: 'copper', name: 'Медь', emoji: '🟫', priceMc: 2, chance: 0.2, min: 30, max: 65 },
+  { key: 'iron', name: 'Железо', emoji: '⚙️', priceMc: 4, chance: 0.15, min: 12, max: 20 },
+  { key: 'gold', name: 'Золото', emoji: '🟨', priceMc: 5, chance: 0.08, min: 5, max: 7 },
+  { key: 'diamond', name: 'Алмаз', emoji: '💎', priceMc: 7, chance: 0.07, min: 1, max: 2 }
 ];
 
 export const PICKAXE_LIMIT_MC = {
@@ -49,6 +49,28 @@ export const MAIN_MENU = {
 export const LADDER_LEVELS = 7;
 export const LADDER_CHOICES = 8;
 export const LADDER_MULTIPLIERS = [1.14, 1.28, 1.42, 1.56, 1.70, 1.84, 1.98]; // index: level-1
+
+export const NFT_TYPES = {
+  SNOOP_DOGG: 'Snoop Dogg',
+  SWAG_BAG: 'Swag Bag',
+  SNOOP_CIGAR: 'Snoop Cigar',
+  LOW_RIDER: 'Low Rider'
+};
+
+export const CASE100_REWARDS = [
+  { amount: 25, weight: 10 },
+  { amount: 50, weight: 25 },
+  { amount: 75, weight: 30 },
+  { amount: 150, weight: 30 },
+  { amount: 300, weight: 5 }
+];
+
+export const CASE700_WEIGHTS = [
+  { type: NFT_TYPES.SNOOP_DOGG, weight: 66 },
+  { type: NFT_TYPES.SWAG_BAG, weight: 30 },
+  { type: NFT_TYPES.SNOOP_CIGAR, weight: 5 },
+  { type: NFT_TYPES.LOW_RIDER, weight: 1 }
+];
 export const LADDER_ALLOWED_BETS_STARS = [10, 15, 25, 50, 150, 250, 300, 400, 500];
 
 export const MINING_RANGES = {

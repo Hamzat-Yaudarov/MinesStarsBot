@@ -68,6 +68,29 @@ export async function initDb() {
     alter table withdrawals add column if not exists refunded boolean default false;
     alter table withdrawals add column if not exists admin_msg_chat_id text;
     alter table withdrawals add column if not exists admin_msg_message_id bigint;
+
+    create table if not exists nfts (
+      id bigserial primary key,
+      type text not null,
+      tg_link text not null unique,
+      assigned boolean not null default false,
+      assigned_to_tg_id bigint references users(tg_id) on delete set null,
+      assigned_at timestamptz
+    );
+    create index if not exists idx_nfts_type_assigned on nfts(type, assigned);
+
+    create table if not exists nft_withdrawals (
+      id bigserial primary key,
+      user_tg_id bigint not null references users(tg_id) on delete cascade,
+      nft_id bigint not null references nfts(id) on delete restrict,
+      status text not null default 'pending',
+      reviewed_by_tg_id bigint,
+      reviewed_at timestamptz,
+      reason text,
+      admin_msg_chat_id text,
+      admin_msg_message_id bigint,
+      created_at timestamptz not null default now()
+    );
   `);
 }
 
@@ -188,6 +211,49 @@ export async function createWithdrawal(tgId, amount, fee) {
 export async function listWithdrawals(tgId, limit = 5) {
   const { rows } = await pool.query('select * from withdrawals where user_tg_id=$1 order by id desc limit $2', [tgId, limit]);
   return rows;
+}
+
+export async function getUserNfts(tgId) {
+  const { rows } = await pool.query('select id, type, tg_link from nfts where assigned=true and assigned_to_tg_id=$1 order by id desc', [tgId]);
+  return rows;
+}
+
+export async function assignRandomNftOfType(type, tgId) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    const sel = await client.query("select id from nfts where type=$1 and assigned=false for update skip locked limit 1", [type]);
+    if (sel.rows.length === 0) { await client.query('rollback'); return null; }
+    const id = sel.rows[0].id;
+    await client.query('update nfts set assigned=true, assigned_to_tg_id=$1, assigned_at=now() where id=$2', [tgId, id]);
+    const { rows } = await client.query('select id, type, tg_link from nfts where id=$1', [id]);
+    await client.query('commit');
+    return rows[0];
+  } catch (e) {
+    await client.query('rollback');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function createNftWithdrawal(tgId, nftId) {
+  const { rows } = await pool.query('insert into nft_withdrawals (user_tg_id, nft_id) values ($1,$2) returning *', [tgId, nftId]);
+  return rows[0];
+}
+
+export async function getNftWithdrawalById(id) {
+  const { rows } = await pool.query('select * from nft_withdrawals where id=$1', [id]);
+  return rows[0] || null;
+}
+
+export async function updateNftWithdrawal(id, fields) {
+  const keys = Object.keys(fields);
+  if (!keys.length) return;
+  const sets = keys.map((k,i)=>`${k}=$${i+1}`).join(', ');
+  const values = keys.map(k=>fields[k]);
+  values.push(id);
+  await pool.query(`update nft_withdrawals set ${sets} where id=$${values.length}`, values);
 }
 
 export async function getWithdrawalById(id) {

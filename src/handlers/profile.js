@@ -35,5 +35,9 @@ export function registerProfile(bot) {
         resize_keyboard: true
       }
     });
+
+    await ctx.reply('Действия профиля', {
+      reply_markup: { inline_keyboard: [[{ text: '🪪 Мои NFT', callback_data: 'profile:nfts' }]] }
+    });
   });
 }

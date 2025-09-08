@@ -60,7 +60,9 @@ export function registerGames(bot) {
         const layout = randomLayout();
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - bet });
         const game = await createLadderGame(user.tg_id, bet, layout);
-        await ctx.editMessageText(`🪜 Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nВыберите число:`, { reply_markup: levelKeyboard(1) });
+        const curMult = LADDER_MULTIPLIERS[0];
+      const nextMult = LADDER_MULTIPLIERS[1] || curMult;
+      await ctx.editMessageText(`🪜 Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nТекущий множитель: x${curMult.toFixed(2)}\nСледующий: x${nextMult.toFixed(2)}\nВыберите число:`, { reply_markup: levelKeyboard(1) });
         await ctx.answerCbQuery('Игра начата');
       });
       return;
@@ -119,7 +121,9 @@ export function registerGames(bot) {
           return;
         }
 
-        await ctx.editMessageText(`✅ Уровень ${level} пройден!\nТекущий множитель: x${LADDER_MULTIPLIERS[nextLevel - 1].toFixed(2)}\nВыберите число на уровне ${nextLevel+1}:`, { reply_markup: levelKeyboard(nextLevel + 1) });
+        const curMult = LADDER_MULTIPLIERS[nextLevel - 1];
+      const nextMult = LADDER_MULTIPLIERS[nextLevel] || curMult;
+      await ctx.editMessageText(`✅ Уровень ${level} пройден!\nТекущий множитель: x${curMult.toFixed(2)}\nСледующий: x${nextMult.toFixed(2)}\nВыберите число на уровне ${nextLevel+1}:`, { reply_markup: levelKeyboard(nextLevel + 1) });
         await ctx.answerCbQuery('Далее');
       });
       return;
