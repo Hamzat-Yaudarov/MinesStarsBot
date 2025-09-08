@@ -2,12 +2,12 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { migrate, pool } from './database.js';
 import { MAIN_MENU, fmtCoins, fmtStars, COINS_PER_STAR } from './utils/textUtils.js';
 import { registerStart } from './commands/start.js';
-import { registerProfile, showProfile } from './handlers/profile.js';
-import { registerMining, openMine } from './handlers/mining.js';
-import { registerShop, openShop } from './handlers/shop.js';
-import { registerCases, openCases } from './handlers/cases.js';
-import { registerGames, openGames } from './handlers/games.js';
-import { registerWithdraw, openWithdraw } from './handlers/withdraw.js';
+import { registerProfile } from './handlers/profile.js';
+import { registerMining } from './handlers/mining.js';
+import { registerShop } from './handlers/shop.js';
+import { registerCases } from './handlers/cases.js';
+import { registerGames } from './handlers/games.js';
+import { registerWithdraw } from './handlers/withdraw.js';
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -36,31 +36,27 @@ registerCases(bot);
 registerGames(bot);
 registerWithdraw(bot);
 
-// Fallback router for reply keyboard presses: call corresponding open functions (flexible substring match)
-bot.on('message:text', async (ctx) => {
+// Central router for main menu reply keyboard buttons (ensures button presses trigger actions)
+bot.on('message:text', async (ctx, next) => {
+  const text = String(ctx.message.text || '').trim();
+  if (!text) return next();
   try {
-    const raw = String(ctx.message.text || '').trim();
-    const t = raw.toLowerCase();
-    console.log('FALLBACK MSG:', ctx.from?.id, raw);
-
-    // direct exact matches that worked before
-    if (t.includes('профиль')) return showProfile(ctx);
-    if (t.includes('шахт')) return openMine(ctx);
-    if (t.includes('магазин') || t.includes('🛒')) return openShop(ctx);
-    if (t.includes('кейс') || t.includes('кейсы') || t.includes('🎁')) return openCases(ctx);
-    if (t.includes('игр') || t.includes('🎮')) return openGames(ctx);
-    if (t.includes('пополн') || t.includes('платеж') || t.includes('💳')) {
+    if (text === '🧑‍🚀 Профиль') return await (await import('./handlers/profile.js')).showProfile(ctx);
+    if (text === '⛏️ Шахта') return await (await import('./handlers/mining.js')).openMine(ctx);
+    if (text === '🛒 Магазин') return await (await import('./handlers/shop.js')).openShop(ctx);
+    if (text === '🎁 Кейсы') return await (await import('./handlers/cases.js')).openCases(ctx);
+    if (text === '🎮 Игры') return await (await import('./handlers/games.js')).openGames(ctx);
+    if (text === '💸 Вывод') return await (await import('./handlers/withdraw.js')).openWithdraw(ctx);
+    if (text === '💳 Пополнить') {
       const amounts = [50, 100, 200, 500, 1000, 2500];
       const kb = new InlineKeyboard();
       for (const a of amounts) kb.text(`${a} ⭐️`, `pay:${a}`).row();
-      return ctx.reply('Пополнение Stars (XTR)\nВыберите сумму. После оплаты Stars будут начислены на баланс.\n\nКурс: 1 ⭐️ = 200 MC', { reply_markup: kb });
+      return await ctx.reply('Пополнение Stars (XTR)\nВыберите сумму. После оплаты Stars будут начислены на баланс.\n\nКурс: 1 ⭐️ = 200 MC', { reply_markup: kb });
     }
-    if (t.includes('вывод') || t.includes('cash') || t.includes('💸')) return openWithdraw(ctx);
-
-    // fallback: if message looks like a command or single emoji, ignore
   } catch (e) {
-    console.error('fallback router error', e);
+    console.error('main menu router error', e);
   }
+  return next();
 });
 
 bot.hears('💳 Пополнить', async (ctx) => {

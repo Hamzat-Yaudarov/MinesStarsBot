@@ -58,20 +58,8 @@ function buildLevelKeyboard(level) {
   return kb;
 }
 
-async function animateChoices(ctx, level) {
-  // small text animation cycling highlight
-  const base = `Лесенка — Уровень ${level}/7\nВыбираем...`;
-  const frames = [base + '\n🎲', base + '\n🎲 .', base + '\n🎲 ..', base + '\n🎲 ...'];
-  const msg = await ctx.editMessageText(frames[0]);
-  for (let i=1;i<frames.length;i++) {
-    await sleep(180);
-    try { await ctx.api.editMessageText(ctx.chat.id, msg.message_id, frames[i]); } catch(_){}
-  }
-}
-
 async function drawLevel(ctx, level) {
   const mul = levelMultiplier(level);
-  await animateChoices(ctx, level);
   return ctx.editMessageText(`Лесенка — Уровень ${level}/7\nТекущий множитель: x${mul}\nВыберите лестницу (1–8)`, { reply_markup: buildLevelKeyboard(level) });
 }
 

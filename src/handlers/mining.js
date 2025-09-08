@@ -68,7 +68,6 @@ export function registerMining(bot) {
   });
 }
 
-
 export async function openMine(ctx) {
   const userId = ctx.from.id;
   const u = await pool.query('select pickaxe_level, last_mine_at from users where id=$1', [userId]);
@@ -90,10 +89,6 @@ async function doMine(ctx) {
   const u = await pool.query('select pickaxe_level, last_mine_at from users where id=$1', [userId]);
   const lvl = u.rows[0]?.pickaxe_level || 0;
   const last = u.rows[0]?.last_mine_at ? dayjs(u.rows[0].last_mine_at) : null;
-  // If player has no pickaxe (level 0) they cannot mine
-  if (!lvl || lvl === 0) {
-    return ctx.answerCallbackQuery({ text: 'У вас нет кирки. Купите первую кирку в магазине (10 000 MC или 50 ⭐️).', show_alert: true });
-  }
   if (last && dayjs().isBefore(last.add(3, 'hour'))) {
     const left = last.add(3,'hour').diff(dayjs(), 'minute');
     return ctx.answerCallbackQuery({ text: `Рано! Осталось ${Math.floor(left/60)}ч ${left%60}м`, show_alert: true });
@@ -223,7 +218,7 @@ async function sellResourceAll(ctx) {
   const r = await pool.query('select * from user_resources where user_id=$1', [userId]);
   const res = r.rows[0];
   const amount = res[resource] || 0;
-  if (!amount || amount <= 0) return ctx.answerCallbackQuery({ text: 'Нет тако��о ресурса для продажи', show_alert: true });
+  if (!amount || amount <= 0) return ctx.answerCallbackQuery({ text: 'Нет такого ресурса для прод��жи', show_alert: true });
   const price = Resource[resource].price;
   const total = amount * price;
   await pool.query(`update users set coins = coins + $2 where id=$1`, [userId, total]);
@@ -244,7 +239,6 @@ async function sellResourceCustom(ctx) {
   await pool.query('insert into pending_sales(user_id, resource, created_at) values ($1,$2,now()) on conflict (user_id) do update set resource=excluded.resource, created_at=now()', [userId, resource]);
   await ctx.editMessageText(`Введите количество ${resource} для продажи. Доступно: ${have}.\nОтправьте число или напишите "Отмена".`);
 }
-
 
 async function sellResourceChoose(ctx) {
   const data = ctx.callbackQuery.data; // sell:res:coal
@@ -272,7 +266,7 @@ async function sellAll(ctx) {
   const res = r.rows[0];
   const price = Resource;
   const total = res.coal*price.coal.price + res.copper*price.copper.price + res.iron*price.iron.price + res.gold*price.gold.price + res.diamond*price.diamond.price;
-  if (total <= 0) return ctx.answerCallbackQuery({ text: 'Нет ресурсов для прода��и', show_alert: true });
+  if (total <= 0) return ctx.answerCallbackQuery({ text: 'Нет ресурсов для продажи', show_alert: true });
   await pool.query('update users set coins = coins + $2 where id=$1', [userId, total]);
   await pool.query('update user_resources set coal=0, copper=0, iron=0, gold=0, diamond=0 where user_id=$1', [userId]);
   await pool.query('insert into transactions(user_id, kind, amount_coins, meta) values ($1,$2,$3,$4)', [userId, 'sell_all', total, JSON.stringify(res)]);
