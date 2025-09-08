@@ -36,23 +36,28 @@ registerCases(bot);
 registerGames(bot);
 registerWithdraw(bot);
 
-// Fallback router for reply keyboard presses: call corresponding open functions
+// Fallback router for reply keyboard presses: call corresponding open functions (flexible substring match)
 bot.on('message:text', async (ctx) => {
   try {
-    const t = String(ctx.message.text || '').trim();
-    console.log('FALLBACK MSG:', ctx.from?.id, t);
-    if (t === '🧑‍🚀 Профиль') return showProfile(ctx);
-    if (t === '⛏️ Шахта') return openMine(ctx);
-    if (t === '🛒 Магазин') return openShop(ctx);
-    if (t === '🎁 Кейсы') return openCases(ctx);
-    if (t === '🎮 Игры') return openGames(ctx);
-    if (t === '💳 Пополнить') {
+    const raw = String(ctx.message.text || '').trim();
+    const t = raw.toLowerCase();
+    console.log('FALLBACK MSG:', ctx.from?.id, raw);
+
+    // direct exact matches that worked before
+    if (t.includes('профиль')) return showProfile(ctx);
+    if (t.includes('шахт')) return openMine(ctx);
+    if (t.includes('магазин') || t.includes('🛒')) return openShop(ctx);
+    if (t.includes('кейс') || t.includes('кейсы') || t.includes('🎁')) return openCases(ctx);
+    if (t.includes('игр') || t.includes('🎮')) return openGames(ctx);
+    if (t.includes('пополн') || t.includes('платеж') || t.includes('💳')) {
       const amounts = [50, 100, 200, 500, 1000, 2500];
       const kb = new InlineKeyboard();
       for (const a of amounts) kb.text(`${a} ⭐️`, `pay:${a}`).row();
       return ctx.reply('Пополнение Stars (XTR)\nВыберите сумму. После оплаты Stars будут начислены на баланс.\n\nКурс: 1 ⭐️ = 200 MC', { reply_markup: kb });
     }
-    if (t === '💸 Вывод') return openWithdraw(ctx);
+    if (t.includes('вывод') || t.includes('cash') || t.includes('💸')) return openWithdraw(ctx);
+
+    // fallback: if message looks like a command or single emoji, ignore
   } catch (e) {
     console.error('fallback router error', e);
   }
