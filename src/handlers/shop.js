@@ -1,68 +1,116 @@
-import { pool } from '../database.js';
-import { InlineKeyboard } from 'grammy';
-import { pool } from '../database.js';
-import { PICKAXE_PRICES, COINS_PER_STAR, fmtCoins, fmtStars } from '../utils/textUtils.js';
+import { MAIN_MENU, MC_PER_STAR, PICKAXE_LEVEL_COST_MC } from '../data/constants.js';
+import { getUser, updateUser } from '../db/index.js';
+
+const awaiting = new Map(); // userId -> { dir: 'mc2stars'|'stars2mc' }
 
 export function registerShop(bot) {
-  bot.hears('🛒 Магазин', async (ctx) => openShop(ctx));
-  bot.callbackQuery('shop:open', async (ctx) => openShop(ctx));
-  bot.callbackQuery(/shop:buy:(\d+)/, async (ctx) => buyPickaxe(ctx));
-  bot.callbackQuery('shop:ex:coins2stars', async (ctx) => exCoins2Stars(ctx));
-  bot.callbackQuery('shop:ex:stars2coins', async (ctx) => exStars2Coins(ctx));
-}
+  bot.hears(MAIN_MENU.SHOP, async (ctx) => {
+    const user = await getUser(ctx.from.id);
+    if (!user) return ctx.reply('Сначала /start');
 
-export async function openShop(ctx) {
-  const userId = ctx.from.id;
-  const u = await pool.query('select coins, stars, pickaxe_level from users where id=$1', [userId]);
-  const { coins, stars, pickaxe_level } = u.rows[0];
-  const next = Math.min(10, (pickaxe_level || 0) + 1);
-  const price = PICKAXE_PRICES[next];
-  const kb = new InlineKeyboard();
-  if (pickaxe_level < 10) {
-    kb.text(`⛏️ Улучшить до ${next} (${fmtCoins(price)})`, `shop:buy:${next}`).row();
-  }
-  kb.text('🔄 Обмен: MC ➜ ⭐️', 'shop:ex:coins2stars').text('⭐️ ➜ MC', 'shop:ex:stars2coins');
-  const text = `Магазин\nКирка: Уровень ${pickaxe_level}\nБаланс: ${fmtCoins(coins)} | ${fmtStars(stars)}\n\nКурс: 1 ⭐️ = ${COINS_PER_STAR} MC\nПервую кирку можно купить за 10 000 MC или 50 ⭐️ (обменом).`;
-  if (ctx.callbackQuery) return ctx.editMessageText(text, { reply_markup: kb });
-  return ctx.reply(text, { reply_markup: kb });
-}
+    const buttons = [];
+    if (user.pickaxe_level === 0) {
+      buttons.push([{ text: '⛏️ Купить кирку (10,000 MC)', callback_data: 'shop:pickaxe:mc' }]);
+      buttons.push([{ text: '⛏️ Купить кирку (50 ⭐)', callback_data: 'shop:pickaxe:stars' }]);
+    } else {
+      const lvl = Number(user.pickaxe_level);
+      const next = Math.min(10, lvl + 1);
+      const cost = PICKAXE_LEVEL_COST_MC[next];
+      buttons.push([{ text: `⛏️ Кирка ур. ${lvl}`, callback_data: 'noop' }]);
+      if (lvl < 10) buttons.push([{ text: `🔧 Улучшить до ур. ${next} (${cost.toLocaleString()} MC)`, callback_data: `shop:upgrade:${next}` }]);
+      else buttons.push([{ text: '✅ Максимальный уровень', callback_data: 'noop' }]);
+    }
+    buttons.push([{ text: '🔄 Обмен MC ↔️ ⭐', callback_data: 'shop:exchange' }]);
 
-async function buyPickaxe(ctx) {
-  const userId = ctx.from.id;
-  const toLevel = Number(ctx.match[1]);
-  const u = await pool.query('select coins, pickaxe_level from users where id=$1', [userId]);
-  const { coins, pickaxe_level } = u.rows[0];
-  if (toLevel !== (pickaxe_level + 1)) return ctx.answerCallbackQuery({ text: 'Покупать можно только следующий уровень', show_alert: true });
-  const price = PICKAXE_PRICES[toLevel];
-  if (coins < price) return ctx.answerCallbackQuery({ text: 'Недостаточно монет', show_alert: true });
-  await pool.query('update users set coins = coins - $2, pickaxe_level = $3 where id=$1', [userId, price, toLevel]);
-  await pool.query('insert into transactions(user_id, kind, amount_coins, meta) values ($1,$2,$3,$4)', [userId, 'pickaxe_upgrade', -price, JSON.stringify({ toLevel })]);
-  await ctx.answerCallbackQuery({ text: `Кирка улучшена до уровня ${toLevel}!` });
-  return openShop(ctx);
-}
+    await ctx.reply('🛒 Магазин', { reply_markup: { inline_keyboard: buttons } });
+  });
 
-async function exCoins2Stars(ctx) {
-  const userId = ctx.from.id;
-  const u = await pool.query('select coins from users where id=$1', [userId]);
-  const { coins } = u.rows[0];
-  const can = Math.floor(coins / COINS_PER_STAR);
-  if (can <= 0) return ctx.answerCallbackQuery({ text: 'Недостаточно монет для обмена', show_alert: true });
-  const stars = can; // exchange max
-  const spend = stars * COINS_PER_STAR;
-  await pool.query('update users set coins = coins - $2, stars = stars + $3 where id=$1', [userId, spend, stars]);
-  await pool.query('insert into transactions(user_id, kind, amount_coins, amount_stars, meta) values ($1,$2,$3,$4,$5)', [userId, 'exchange_c2s', -spend, stars, JSON.stringify({ rate: COINS_PER_STAR })]);
-  await ctx.answerCallbackQuery({ text: `Обмен: -${fmtCoins(spend)} ➜ +${fmtStars(stars)}` });
-  return openShop(ctx);
-}
+  bot.on('callback_query', async (ctx, next) => {
+    const data = ctx.callbackQuery?.data || '';
+    if (!data.startsWith('shop:')) return next();
+    const user = await getUser(ctx.from.id);
+    if (!user) { await ctx.answerCbQuery('Сначала /start'); return; }
 
-async function exStars2Coins(ctx) {
-  const userId = ctx.from.id;
-  const u = await pool.query('select stars from users where id=$1', [userId]);
-  const { stars } = u.rows[0];
-  if (stars <= 0) return ctx.answerCallbackQuery({ text: 'Нет Stars для обмена', show_alert: true });
-  const coins = stars * COINS_PER_STAR;
-  await pool.query('update users set stars = 0, coins = coins + $2 where id=$1', [userId, coins]);
-  await pool.query('insert into transactions(user_id, kind, amount_coins, amount_stars, meta) values ($1,$2,$3,$4,$5)', [userId, 'exchange_s2c', coins, -stars, JSON.stringify({ rate: COINS_PER_STAR })]);
-  await ctx.answerCallbackQuery({ text: `Обмен: -${fmtStars(stars)} ➜ +${fmtCoins(coins)}` });
-  return openShop(ctx);
+    if (data.startsWith('shop:upgrade:')) {
+      const next = Number(data.split(':')[2]);
+      const lvl = Number(user.pickaxe_level);
+      if (!Number.isInteger(next) || next !== lvl + 1 || next < 1 || next > 10) { await ctx.answerCbQuery('Некорректный уровень'); return; }
+      const cost = PICKAXE_LEVEL_COST_MC[next];
+      if (Number(user.balance_mc||0) < cost) { await ctx.answerCbQuery('Не хватает MC'); return; }
+      await updateUser(user.tg_id, { balance_mc: Number(user.balance_mc) - cost, pickaxe_level: next });
+      await ctx.editMessageText(`✅ Улучшение: ур. ${lvl} → ур. ${next} (−${cost.toLocaleString()} MC)`);
+      return ctx.answerCbQuery('Готово');
+    }
+
+    if (data === 'shop:exchange') {
+      await ctx.editMessageText('Выберите направлен��е обмена:', {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: `MC → ⭐ (1⭐ = ${MC_PER_STAR} MC)`, callback_data: 'shop:exchange:mc2stars' }],
+            [{ text: `⭐ → MC (1⭐ = ${MC_PER_STAR} MC)`, callback_data: 'shop:exchange:stars2mc' }]
+          ]
+        }
+      });
+      return ctx.answerCbQuery();
+    }
+
+    if (data === 'shop:exchange:mc2stars' || data === 'shop:exchange:stars2mc') {
+      const dir = data.split(':').pop();
+      awaiting.set(ctx.from.id, { dir });
+      await ctx.editMessageText(dir === 'mc2stars' ? 'Введите количество ⭐ для покупки за MC:' : 'Введите количество ⭐ для продажи в MC:');
+      return ctx.answerCbQuery();
+    }
+
+    if (data === 'shop:pickaxe:mc') {
+      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена'); return; }
+      if (Number(user.balance_mc||0) < 10000) { await ctx.answerCbQuery('Не хватает MC'); return; }
+      await updateUser(user.tg_id, { balance_mc: Number(user.balance_mc) - 10000, pickaxe_level: 1 });
+      await ctx.editMessageText('✅ Кирка куплена за 10,000 MC. Теперь можно копать!');
+      return ctx.answerCbQuery('Готово');
+    }
+
+    if (data === 'shop:pickaxe:stars') {
+      if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена'); return; }
+      if (Number(user.balance_stars||0) < 50) { await ctx.answerCbQuery('Не хватает ⭐'); return; }
+      await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 50, pickaxe_level: 1 });
+      await ctx.editMessageText('✅ Кирка куплена за 50 ⭐. Теперь можно копать!');
+      return ctx.answerCbQuery('Готово');
+    }
+  });
+
+  bot.on('text', async (ctx, next) => {
+    const p = awaiting.get(ctx.from.id);
+    if (!p) return next();
+    const n = Number((ctx.message.text||'').trim());
+    if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+      await ctx.reply('Введите целое положительное число ⭐');
+      return;
+    }
+    const user = await getUser(ctx.from.id);
+    if (!user) return; 
+
+    if (p.dir === 'mc2stars') {
+      const needMc = n * MC_PER_STAR;
+      if (Number(user.balance_mc||0) < needMc) { await ctx.reply(`Нужно ${needMc} MC`); return; }
+      await updateUser(user.tg_id, {
+        balance_mc: Number(user.balance_mc) - needMc,
+        balance_stars: Number(user.balance_stars||0) + n
+      });
+      awaiting.delete(ctx.from.id);
+      await ctx.reply(`✅ Обмен: -${needMc} MC → +${n} ⭐`);
+      return;
+    }
+
+    if (p.dir === 'stars2mc') {
+      if (Number(user.balance_stars||0) < n) { await ctx.reply('Не хватает ⭐'); return; }
+      const gainMc = n * MC_PER_STAR;
+      await updateUser(user.tg_id, {
+        balance_stars: Number(user.balance_stars) - n,
+        balance_mc: Number(user.balance_mc||0) + gainMc
+      });
+      awaiting.delete(ctx.from.id);
+      await ctx.reply(`✅ Обмен: -${n} ⭐ → +${gainMc} MC`);
+      return;
+    }
+  });
 }

@@ -1,55 +1,39 @@
-import dayjs from 'dayjs';
-import { pool } from '../database.js';
-import { MAIN_MENU, fmtCoins, fmtStars } from '../utils/textUtils.js';
-import { InlineKeyboard } from 'grammy';
+import { MAIN_MENU, DIG_COOLDOWN_MS } from '../data/constants.js';
+import { getInventory, getUser } from '../db/index.js';
+import { formatBalances, invSummary, humanMs } from '../utils/format.js';
 
 export function registerProfile(bot) {
-  bot.hears('🧑‍🚀 Профиль', async (ctx) => showProfile(ctx));
-  bot.callbackQuery('profile:open', async (ctx) => showProfile(ctx));
-  bot.callbackQuery('profile:ref', async (ctx) => sendRef(ctx));
-}
+  bot.hears(MAIN_MENU.PROFILE, async (ctx) => {
+    const user = await getUser(ctx.from.id);
+    if (!user) return ctx.reply('Сначала нажмите /start');
+    const inv = await getInventory(ctx.from.id);
+    const now = Date.now();
+    const last = user.last_dig_at ? new Date(user.last_dig_at).getTime() : 0;
+    const rest = DIG_COOLDOWN_MS - (now - last);
+    const cooldown = user.pickaxe_level === 0 ? 'Нет кирки' : (rest > 0 ? `⏳ Откат: ${humanMs(rest)}` : 'Готов к копке');
 
-export async function showProfile(ctx) {
-  const userId = ctx.from.id;
-  await pool.query('insert into users(id, username) values ($1,$2) on conflict (id) do update set username=excluded.username', [userId, ctx.from.username || null]);
-  await pool.query('insert into user_resources(user_id) values ($1) on conflict (user_id) do nothing', [userId]);
-  const u = await pool.query('select * from users where id=$1', [userId]);
-  const r = await pool.query('select * from user_resources where user_id=$1', [userId]);
-  const user = u.rows[0];
-  const res = r.rows[0];
-  const cd = user.last_mine_at ? Math.max(0, dayjs(user.last_mine_at).add(3, 'hour').diff(dayjs(), 'minute')) : 0;
-  const nextMine = cd > 0 ? `${Math.floor(cd/60)}ч ${cd%60}м` : 'доступно';
+    const text = [
+      `📇 Профиль @${ctx.from.username || ''}`.trim(),
+      `\nКирка: уровень ${user.pickaxe_level}`,
+      formatBalances(user),
+      '',
+      '⛏️ Шахта',
+      cooldown,
+      '',
+      '📦 Инвентарь',
+      invSummary(inv)
+    ].join('\n');
 
-  const kb = new InlineKeyboard()
-    .text('🔗 Реф. ссылка', 'profile:ref').row()
-    .text('💰 Продать', 'sell:menu').row();
-
-  const text = [
-    `Профиль @${ctx.from.username || userId}`,
-    `⭐️ Stars: ${fmtStars(user.stars)}`,
-    `🪙 Coins: ${fmtCoins(user.coins)}`,
-    `⛏️ Кирка: Уровень ${user.pickaxe_level}`,
-    `⏱️ Копать через: ${nextMine}`,
-    '',
-    `Ресурсы:`,
-    `🪨 Уголь: ${res.coal}`,
-    `🥉 Медь: ${res.copper}`,
-    `⛓️ Железо: ${res.iron}`,
-    `🥇 Золото: ${res.gold}`,
-    `💎 Алмазы: ${res.diamond}`
-  ].join('\n');
-
-  if (ctx.callbackQuery) {
-    await ctx.editMessageText(text, { reply_markup: kb });
-  } else {
-    await ctx.reply(text, { ...MAIN_MENU, reply_markup: { ...MAIN_MENU.reply_markup, inline_keyboard: kb.inline_keyboard } });
-  }
-}
-
-async function sendRef(ctx) {
-  const userId = ctx.from.id;
-  const username = process.env.BOT_USERNAME;
-  const link = `https://t.me/${username}?start=ref_${userId}`;
-  await ctx.answerCallbackQuery();
-  await ctx.reply(`Ваша реферальная ссылка (5% от депозитов друзей):\n${link}`);
+    await ctx.reply(text, {
+      reply_markup: {
+        keyboard: [
+          [MAIN_MENU.PROFILE, MAIN_MENU.MINE],
+          [MAIN_MENU.SELL, MAIN_MENU.SHOP],
+          [MAIN_MENU.CASES, MAIN_MENU.GAMES],
+          [MAIN_MENU.WITHDRAW]
+        ],
+        resize_keyboard: true
+      }
+    });
+  });
 }
