@@ -60,7 +60,7 @@ export function registerGames(bot) {
         const layout = randomLayout();
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - bet });
         const game = await createLadderGame(user.tg_id, bet, layout);
-        await ctx.editMessageText(`��� Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nВыберите число:`, { reply_markup: levelKeyboard(1) });
+        await ctx.editMessageText(`🪜 Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nВыберите число:`, { reply_markup: levelKeyboard(1) });
         await ctx.answerCbQuery('Игра начата');
       });
       return;

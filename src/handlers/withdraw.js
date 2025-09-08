@@ -52,7 +52,7 @@ export function registerWithdraw(bot) {
         const balance = Number(user.balance_stars||0);
         if (balance < total) { await ctx.answerCbQuery(`Нужно ${total}⭐ на балансе`); return; }
         await ctx.editMessageText(`Подтвердить вывод ${amount}⭐ (комиссия ${fee}⭐, всего спишется ${total}⭐)?`, {
-          reply_markup: { inline_keyboard: [[{ text: '✅ Подтвердить', callback_data: `wd:confirm:${amount}` }], [{ text: '↩️ Наз��д', callback_data: 'wd:back' }]] }
+          reply_markup: { inline_keyboard: [[{ text: '✅ Подтвердить', callback_data: `wd:confirm:${amount}` }], [{ text: '↩️ Назад', callback_data: 'wd:back' }]] }
         });
         return ctx.answerCbQuery();
       }
@@ -124,7 +124,7 @@ export function registerWithdraw(bot) {
         const choice = parts[3];
         const refund = choice === 'yes';
         const cur = await getWithdrawalById(id);
-        if (!cur || cur.status !== 'pending') { await ctx.answerCbQuery('Заявка уже обраб��тана'); return; }
+        if (!cur || cur.status !== 'pending') { await ctx.answerCbQuery('Заявка уже обработана'); return; }
         awaitingAdminReason.set(ctx.from.id, { id, refund });
         await ctx.editMessageText('Укажите причину отклонения сообщением:');
         return ctx.answerCbQuery();
