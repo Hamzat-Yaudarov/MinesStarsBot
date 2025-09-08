@@ -1,5 +1,5 @@
 export const RESOURCES = [
-  { key: 'coal', name: 'Уголь', emoji: '🪨', priceMc: 1, chance: 0.5, min: 70, max: 400 },
+  { key: 'coal', name: 'Уголь', emoji: '⬛', priceMc: 1, chance: 0.5, min: 70, max: 400 },
   { key: 'copper', name: 'Медь', emoji: '🟫', priceMc: 2, chance: 0.2, min: 30, max: 65 },
   { key: 'iron', name: 'Железо', emoji: '⚙️', priceMc: 4, chance: 0.15, min: 12, max: 20 },
   { key: 'gold', name: 'Золото', emoji: '🟨', priceMc: 5, chance: 0.08, min: 5, max: 7 },
@@ -42,5 +42,11 @@ export const MAIN_MENU = {
   SHOP: '🛒 Магазин',
   CASES: '🎁 Кейсы',
   GAMES: '🎲 Игры',
+  DEPOSIT: '💳 Пополнение',
   WITHDRAW: '🏦 Вывод'
 };
+
+export const LADDER_LEVELS = 7;
+export const LADDER_CHOICES = 8;
+export const LADDER_MULTIPLIERS = [1.14, 1.28, 1.42, 1.56, 1.70, 1.84, 1.98]; // index: level-1
+export const LADDER_ALLOWED_BETS_STARS = [10, 15, 25, 50, 150, 250, 300, 400, 500];

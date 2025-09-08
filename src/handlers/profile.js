@@ -30,7 +30,7 @@ export function registerProfile(bot) {
           [MAIN_MENU.PROFILE, MAIN_MENU.MINE],
           [MAIN_MENU.SELL, MAIN_MENU.SHOP],
           [MAIN_MENU.CASES, MAIN_MENU.GAMES],
-          [MAIN_MENU.WITHDRAW]
+          [MAIN_MENU.DEPOSIT, MAIN_MENU.WITHDRAW]
         ],
         resize_keyboard: true
       }

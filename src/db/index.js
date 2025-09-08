@@ -41,6 +41,33 @@ export async function initDb() {
       claimed_on date not null,
       primary key (user_tg_id, claimed_on)
     );
+
+    create table if not exists ladder_games (
+      id bigserial primary key,
+      user_tg_id bigint not null references users(tg_id) on delete cascade,
+      bet_stars bigint not null,
+      level int not null default 0, -- completed levels
+      layout jsonb not null,
+      status text not null default 'active',
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists withdrawals (
+      id bigserial primary key,
+      user_tg_id bigint not null references users(tg_id) on delete cascade,
+      amount_stars bigint not null,
+      fee_stars bigint not null,
+      total_stars bigint not null,
+      status text not null default 'pending',
+      created_at timestamptz not null default now()
+    );
+
+    alter table withdrawals add column if not exists reviewed_by_tg_id bigint;
+    alter table withdrawals add column if not exists reviewed_at timestamptz;
+    alter table withdrawals add column if not exists reason text;
+    alter table withdrawals add column if not exists refunded boolean default false;
+    alter table withdrawals add column if not exists admin_msg_chat_id text;
+    alter table withdrawals add column if not exists admin_msg_message_id bigint;
   `);
 }
 
@@ -125,4 +152,54 @@ export async function hasClaimedFreeCaseToday(tgId) {
 
 export async function markFreeCaseClaimed(tgId) {
   await pool.query('insert into free_case_claims (user_tg_id, claimed_on) values ($1, now()::date) on conflict do nothing', [tgId]);
+}
+
+export async function getActiveLadderGame(tgId) {
+  const { rows } = await pool.query("select * from ladder_games where user_tg_id=$1 and status='active' order by id desc limit 1", [tgId]);
+  return rows[0] || null;
+}
+
+export async function createLadderGame(tgId, bet, layout) {
+  const { rows } = await pool.query(
+    'insert into ladder_games (user_tg_id, bet_stars, layout) values ($1,$2,$3) returning *',
+    [tgId, bet, layout]
+  );
+  return rows[0];
+}
+
+export async function updateLadderGame(id, fields) {
+  const keys = Object.keys(fields);
+  if (!keys.length) return;
+  const sets = keys.map((k, i) => `${k}=$${i+1}`).join(', ');
+  const values = keys.map(k => fields[k]);
+  values.push(id);
+  await pool.query(`update ladder_games set ${sets} where id=$${values.length}`, values);
+}
+
+export async function createWithdrawal(tgId, amount, fee) {
+  const total = amount + fee;
+  const { rows } = await pool.query(
+    'insert into withdrawals (user_tg_id, amount_stars, fee_stars, total_stars) values ($1,$2,$3,$4) returning *',
+    [tgId, amount, fee, total]
+  );
+  return rows[0];
+}
+
+export async function listWithdrawals(tgId, limit = 5) {
+  const { rows } = await pool.query('select * from withdrawals where user_tg_id=$1 order by id desc limit $2', [tgId, limit]);
+  return rows;
+}
+
+export async function getWithdrawalById(id) {
+  const { rows } = await pool.query('select * from withdrawals where id=$1', [id]);
+  return rows[0] || null;
+}
+
+export async function updateWithdrawal(id, fields) {
+  const keys = Object.keys(fields);
+  if (!keys.length) return;
+  const sets = keys.map((k,i)=>`${k}=$${i+1}`).join(', ');
+  const values = keys.map(k=>fields[k]);
+  values.push(id);
+  await pool.query(`update withdrawals set ${sets} where id=$${values.length}`, values);
 }
