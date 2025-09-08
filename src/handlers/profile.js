@@ -9,7 +9,7 @@ export function registerProfile(bot) {
   bot.callbackQuery('profile:ref', async (ctx) => sendRef(ctx));
 }
 
-async function showProfile(ctx) {
+export async function showProfile(ctx) {
   const userId = ctx.from.id;
   await pool.query('insert into users(id, username) values ($1,$2) on conflict (id) do update set username=excluded.username', [userId, ctx.from.username || null]);
   await pool.query('insert into user_resources(user_id) values ($1) on conflict (user_id) do nothing', [userId]);

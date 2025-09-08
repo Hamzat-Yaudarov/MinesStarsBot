@@ -11,7 +11,7 @@ export function registerShop(bot) {
   bot.callbackQuery('shop:ex:stars2coins', async (ctx) => exStars2Coins(ctx));
 }
 
-async function openShop(ctx) {
+export async function openShop(ctx) {
   const userId = ctx.from.id;
   const u = await pool.query('select coins, stars, pickaxe_level from users where id=$1', [userId]);
   const { coins, stars, pickaxe_level } = u.rows[0];

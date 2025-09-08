@@ -25,7 +25,7 @@ export function registerGames(bot) {
   bot.callbackQuery('game:cashout', async (ctx) => cashout(ctx));
 }
 
-async function openGames(ctx) {
+export async function openGames(ctx) {
   const kb = new InlineKeyboard().text('🪜 Игра "Лесенка"', 'game:start');
   const text = 'Игры\n• Лесенка: пройди 7 уровней, на каждом из 8 вариантов некоторые сломаны. Забери выигрыш в любой момент!';
   if (ctx.callbackQuery) return ctx.editMessageText(text, { reply_markup: kb });

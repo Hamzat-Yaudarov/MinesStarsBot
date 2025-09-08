@@ -2,12 +2,12 @@ import { Bot, InlineKeyboard } from 'grammy';
 import { migrate, pool } from './database.js';
 import { MAIN_MENU, fmtCoins, fmtStars, COINS_PER_STAR } from './utils/textUtils.js';
 import { registerStart } from './commands/start.js';
-import { registerProfile } from './handlers/profile.js';
-import { registerMining } from './handlers/mining.js';
-import { registerShop } from './handlers/shop.js';
-import { registerCases } from './handlers/cases.js';
-import { registerGames } from './handlers/games.js';
-import { registerWithdraw } from './handlers/withdraw.js';
+import { registerProfile, showProfile } from './handlers/profile.js';
+import { registerMining, openMine } from './handlers/mining.js';
+import { registerShop, openShop } from './handlers/shop.js';
+import { registerCases, openCases } from './handlers/cases.js';
+import { registerGames, openGames } from './handlers/games.js';
+import { registerWithdraw, openWithdraw } from './handlers/withdraw.js';
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -35,6 +35,28 @@ registerShop(bot);
 registerCases(bot);
 registerGames(bot);
 registerWithdraw(bot);
+
+// Fallback router for reply keyboard presses: call corresponding open functions
+bot.on('message:text', async (ctx) => {
+  try {
+    const t = String(ctx.message.text || '').trim();
+    console.log('FALLBACK MSG:', ctx.from?.id, t);
+    if (t === '🧑‍🚀 Профиль') return showProfile(ctx);
+    if (t === '⛏️ Шахта') return openMine(ctx);
+    if (t === '🛒 Магазин') return openShop(ctx);
+    if (t === '🎁 Кейсы') return openCases(ctx);
+    if (t === '🎮 Игры') return openGames(ctx);
+    if (t === '💳 Пополнить') {
+      const amounts = [50, 100, 200, 500, 1000, 2500];
+      const kb = new InlineKeyboard();
+      for (const a of amounts) kb.text(`${a} ⭐️`, `pay:${a}`).row();
+      return ctx.reply('Пополнение Stars (XTR)\nВыберите сумму. После оплаты Stars будут начислены на баланс.\n\nКурс: 1 ⭐️ = 200 MC', { reply_markup: kb });
+    }
+    if (t === '💸 Вывод') return openWithdraw(ctx);
+  } catch (e) {
+    console.error('fallback router error', e);
+  }
+});
 
 bot.hears('💳 Пополнить', async (ctx) => {
   const amounts = [50, 100, 200, 500, 1000, 2500];

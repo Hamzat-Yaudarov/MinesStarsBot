@@ -9,7 +9,7 @@ export function registerWithdraw(bot) {
   bot.callbackQuery(/withdraw:req:(\d+)/, async (ctx) => createWithdraw(ctx));
 }
 
-async function openWithdraw(ctx) {
+export async function openWithdraw(ctx) {
   const userId = ctx.from.id;
   const u = await pool.query('select stars from users where id=$1', [userId]);
   const bal = Number(u.rows[0]?.stars || 0);
@@ -38,6 +38,6 @@ async function createWithdraw(ctx) {
     await ctx.api.sendMessage(admin, `Заявка на вывод #${id} от ${userId}: ${amount}⭐️ (комиссия ${fee}⭐️)`);
   } catch (_) {}
 
-  await ctx.answerCallbackQuery({ text: 'Заявка на вывод создана. Ожид��йте.', show_alert: true });
+  await ctx.answerCallbackQuery({ text: 'Заявка на вывод создана. Ожидайте.', show_alert: true });
   return openWithdraw(ctx);
 }

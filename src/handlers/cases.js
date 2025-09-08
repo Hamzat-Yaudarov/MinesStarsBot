@@ -24,12 +24,12 @@ export function registerCases(bot) {
   bot.callbackQuery(['cases:free','cases:c150','cases:c250'], async (ctx) => openCase(ctx));
 }
 
-async function openCases(ctx) {
+export async function openCases(ctx) {
   const kb = new InlineKeyboard()
     .text('🆓 Бесплатный', 'cases:free').row()
     .text('💠 150 ⭐️', 'cases:c150').row()
     .text('💠 250 ⭐️', 'cases:c250');
-  const text = 'Кейсы\n• Бесплатный: 1/день при депозите ≥ 200 ⭐️ за сегодня (10–75 ⭐️)\n• За 150 ⭐️: 0, 15, 25, 50, 100, 200, 225\n• За 250 ⭐️: 100, 150, 175, 275, 300, 350\nЧем больше награда — тем ниже шанс.';
+  const text = 'Кейсы\n• Бесплатный: 1/день при депо��ите ≥ 200 ⭐️ за сегодня (10–75 ⭐️)\n• За 150 ⭐️: 0, 15, 25, 50, 100, 200, 225\n• За 250 ⭐️: 100, 150, 175, 275, 300, 350\nЧем больше награда — тем ниже шанс.';
   if (ctx.callbackQuery) return ctx.editMessageText(text, { reply_markup: kb });
   return ctx.reply(text, { reply_markup: kb });
 }
