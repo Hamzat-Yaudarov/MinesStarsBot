@@ -11,16 +11,16 @@ const DROP_TABLE = {
     gold: { chance: 0.0416, min: 5, max: 7 },
     diamond: { chance: 0.0116, min: 1, max: 2 }
   },
-  1: { coal: { chance: 0.60, min: 85, max: 480 }, copper: { chance: 0.25, min: 36, max: 78 }, iron: { chance: 0.10, min: 14, max: 24 }, gold: { chance: 0.0416, min: 6, max: 9 }, diamond: { chance: 0.0116, min: 1, max: 3 } },
-  2: { coal: { chance: 0.60, min: 100, max: 560 }, copper: { chance: 0.25, min: 43, max: 91 }, iron: { chance: 0.10, min: 17, max: 28 }, gold: { chance: 0.0416, min: 7, max: 11 }, diamond: { chance: 0.0116, min: 2, max: 3 } },
-  3: { coal: { chance: 0.60, min: 120, max: 650 }, copper: { chance: 0.25, min: 52, max: 105 }, iron: { chance: 0.10, min: 20, max: 33 }, gold: { chance: 0.0416, min: 9, max: 13 }, diamond: { chance: 0.0116, min: 2, max: 4 } },
-  4: { coal: { chance: 0.60, min: 145, max: 750 }, copper: { chance: 0.25, min: 63, max: 120 }, iron: { chance: 0.10, min: 24, max: 39 }, gold: { chance: 0.0416, min: 11, max: 16 }, diamond: { chance: 0.0116, min: 3, max: 4 } },
-  5: { coal: { chance: 0.60, min: 170, max: 850 }, copper: { chance: 0.25, min: 76, max: 136 }, iron: { chance: 0.10, min: 29, max: 46 }, gold: { chance: 0.0416, min: 13, max: 19 }, diamond: { chance: 0.0116, min: 3, max: 5 } },
-  6: { coal: { chance: 0.60, min: 195, max: 960 }, copper: { chance: 0.25, min: 90, max: 150 }, iron: { chance: 0.10, min: 34, max: 54 }, gold: { chance: 0.0416, min: 15, max: 22 }, diamond: { chance: 0.0116, min: 4, max: 6 } },
-  7: { coal: { chance: 0.60, min: 220, max: 1070 }, copper: { chance: 0.25, min: 105, max: 165 }, iron: { chance: 0.10, min: 40, max: 62 }, gold: { chance: 0.0416, min: 18, max: 25 }, diamond: { chance: 0.0116, min: 4, max: 7 } },
-  8: { coal: { chance: 0.60, min: 245, max: 1180 }, copper: { chance: 0.25, min: 120, max: 180 }, iron: { chance: 0.10, min: 47, max: 71 }, gold: { chance: 0.0416, min: 21, max: 29 }, diamond: { chance: 0.0116, min: 5, max: 8 } },
-  9: { coal: { chance: 0.60, min: 270, max: 1290 }, copper: { chance: 0.25, min: 135, max: 195 }, iron: { chance: 0.10, min: 54, max: 80 }, gold: { chance: 0.0416, min: 25, max: 33 }, diamond: { chance: 0.0116, min: 6, max: 9 } },
-  10: { coal: { chance: 0.60, min: 300, max: 1400 }, copper: { chance: 0.25, min: 150, max: 210 }, iron: { chance: 0.10, min: 62, max: 90 }, gold: { chance: 0.0416, min: 29, max: 38 }, diamond: { chance: 0.0116, min: 7, max: 10 } }
+  1: { coal: { chance: 1, min: 85, max: 480 }, copper: { chance: 0.25, min: 36, max: 78 }, iron: { chance: 0.10, min: 14, max: 24 }, gold: { chance: 0.0416, min: 6, max: 9 }, diamond: { chance: 0.0116, min: 1, max: 3 } },
+  2: { coal: { chance: 1, min: 100, max: 560 }, copper: { chance: 0.25, min: 43, max: 91 }, iron: { chance: 0.10, min: 17, max: 28 }, gold: { chance: 0.0416, min: 7, max: 11 }, diamond: { chance: 0.0116, min: 2, max: 3 } },
+  3: { coal: { chance: 1, min: 120, max: 650 }, copper: { chance: 0.25, min: 52, max: 105 }, iron: { chance: 0.10, min: 20, max: 33 }, gold: { chance: 0.0416, min: 9, max: 13 }, diamond: { chance: 0.0116, min: 2, max: 4 } },
+  4: { coal: { chance: 1, min: 145, max: 750 }, copper: { chance: 0.25, min: 63, max: 120 }, iron: { chance: 0.10, min: 24, max: 39 }, gold: { chance: 0.0416, min: 11, max: 16 }, diamond: { chance: 0.0116, min: 3, max: 4 } },
+  5: { coal: { chance: 1, min: 170, max: 850 }, copper: { chance: 0.25, min: 76, max: 136 }, iron: { chance: 0.10, min: 29, max: 46 }, gold: { chance: 0.0416, min: 13, max: 19 }, diamond: { chance: 0.0116, min: 3, max: 5 } },
+  6: { coal: { chance: 1, min: 195, max: 960 }, copper: { chance: 0.25, min: 90, max: 150 }, iron: { chance: 0.10, min: 34, max: 54 }, gold: { chance: 0.0416, min: 15, max: 22 }, diamond: { chance: 0.0116, min: 4, max: 6 } },
+  7: { coal: { chance: 1, min: 220, max: 1070 }, copper: { chance: 0.25, min: 105, max: 165 }, iron: { chance: 0.10, min: 40, max: 62 }, gold: { chance: 0.0416, min: 18, max: 25 }, diamond: { chance: 0.0116, min: 4, max: 7 } },
+  8: { coal: { chance: 1, min: 245, max: 1180 }, copper: { chance: 0.25, min: 120, max: 180 }, iron: { chance: 0.10, min: 47, max: 71 }, gold: { chance: 0.0416, min: 21, max: 29 }, diamond: { chance: 0.0116, min: 5, max: 8 } },
+  9: { coal: { chance: 1, min: 270, max: 1290 }, copper: { chance: 0.25, min: 135, max: 195 }, iron: { chance: 0.10, min: 54, max: 80 }, gold: { chance: 0.0416, min: 25, max: 33 }, diamond: { chance: 0.0116, min: 6, max: 9 } },
+  10: { coal: { chance: 1, min: 300, max: 1400 }, copper: { chance: 0.25, min: 150, max: 210 }, iron: { chance: 0.10, min: 62, max: 90 }, gold: { chance: 0.0416, min: 29, max: 38 }, diamond: { chance: 0.0116, min: 7, max: 10 } }
 };
 
 export function registerMining(bot) {
@@ -89,6 +89,10 @@ async function doMine(ctx) {
   const u = await pool.query('select pickaxe_level, last_mine_at from users where id=$1', [userId]);
   const lvl = u.rows[0]?.pickaxe_level || 0;
   const last = u.rows[0]?.last_mine_at ? dayjs(u.rows[0].last_mine_at) : null;
+  // If player has no pickaxe (level 0) they cannot mine
+  if (!lvl || lvl === 0) {
+    return ctx.answerCallbackQuery({ text: 'У вас нет кирки. Купите первую кирку в магазине (10 000 MC или 50 ⭐️).', show_alert: true });
+  }
   if (last && dayjs().isBefore(last.add(3, 'hour'))) {
     const left = last.add(3,'hour').diff(dayjs(), 'minute');
     return ctx.answerCallbackQuery({ text: `Рано! Осталось ${Math.floor(left/60)}ч ${left%60}м`, show_alert: true });
