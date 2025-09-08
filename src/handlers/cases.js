@@ -1,6 +1,7 @@
 import { InlineKeyboard } from 'grammy';
 import dayjs from 'dayjs';
 import { pool } from '../database.js';
+import { InlineKeyboard } from 'grammy';
 import { caseSpinFrames, sleep, fmtStars } from '../utils/textUtils.js';
 
 const FREE_MIN_DEPOSIT_TODAY = 200; // stars

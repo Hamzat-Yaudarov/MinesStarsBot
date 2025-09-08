@@ -1,5 +1,6 @@
 import { pool } from '../database.js';
 import { InlineKeyboard } from 'grammy';
+import { pool } from '../database.js';
 import { PICKAXE_PRICES, COINS_PER_STAR, fmtCoins, fmtStars } from '../utils/textUtils.js';
 
 export function registerShop(bot) {

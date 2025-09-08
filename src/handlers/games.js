@@ -1,5 +1,6 @@
 import { pool } from '../database.js';
 import { InlineKeyboard } from 'grammy';
+import { pool } from '../database.js';
 import { sleep } from '../utils/textUtils.js';
 
 const BETS = [10, 15, 25, 50, 150, 250, 300, 400, 500];
