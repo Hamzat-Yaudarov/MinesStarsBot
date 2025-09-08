@@ -18,18 +18,14 @@ export async function initDb() {
       created_at timestamptz not null default now()
     );
 
-    -- In case users table existed without tg_id, ensure it now exists and is unique/not null
-    alter table users add column if not exists tg_id bigint;
-    update users set tg_id = id where tg_id is null;
-    alter table users alter column tg_id set not null;
-    create unique index if not exists users_tg_id_unique on users(tg_id);
-
     create table if not exists inventory (
       user_tg_id bigint not null references users(tg_id) on delete cascade,
       resource text not null,
       qty bigint not null default 0,
       primary key (user_tg_id, resource)
     );
+
+    create index if not exists idx_users_tg_id on users(tg_id);
 
     create table if not exists payments (
       id bigserial primary key,

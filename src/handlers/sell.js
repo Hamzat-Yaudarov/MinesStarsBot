@@ -23,6 +23,11 @@ export function registerSell(bot) {
 
   bot.on('callback_query', async (ctx, next) => {
     const data = ctx.callbackQuery.data || '';
+    if (data === 'open_sell') {
+      const inv = await getInventory(ctx.from.id);
+      await ctx.editMessageText('Выберите ресурс для продажи:', { reply_markup: keyboardForResources(inv) });
+      return ctx.answerCbQuery();
+    }
     if (!data.startsWith('sell_')) return next();
     const userId = ctx.from.id;
 
@@ -31,7 +36,7 @@ export function registerSell(bot) {
       let totalMc = 0;
       const price = (key) => RESOURCES.find(r=>r.key===key).priceMc;
       for (const r of RESOURCES) totalMc += (inv[r.key]||0) * price(r.key);
-      if (totalMc <= 0) return ctx.answerCbQuery('Нечего продавать');
+      if (totalMc <= 0) return ctx.answerCbQuery('Нечего продавать', { show_alert: true });
 
       // zero-out inventory and add mc
       const changes = {};
@@ -49,7 +54,7 @@ export function registerSell(bot) {
       const inv = await getInventory(userId);
       const qty = inv[key] || 0;
       if (qty <= 0) {
-        await ctx.answerCbQuery('Нет такого ресурса');
+        await ctx.answerCbQuery('Нет такого ресурса', { show_alert: true });
         return;
       }
       const r = RESOURCES.find(x=>x.key===key);
@@ -65,7 +70,7 @@ export function registerSell(bot) {
       const key = data.split(':')[1];
       const inv = await getInventory(userId);
       const qty = inv[key] || 0;
-      if (qty <= 0) { await ctx.answerCbQuery('Нет такого ресурса'); return; }
+      if (qty <= 0) { await ctx.answerCbQuery('Нет такого ресурса', { show_alert: true }); return; }
       const r = RESOURCES.find(x=>x.key===key);
       const total = qty * r.priceMc;
       await addInventory(userId, { [key]: -qty });
