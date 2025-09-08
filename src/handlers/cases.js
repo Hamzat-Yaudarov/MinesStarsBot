@@ -49,9 +49,9 @@ export function registerCases(bot) {
       await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 150 });
       const m = await ctx.editMessageText('🎁 Кейс 150⭐...');
       await sleep(300); await ctx.editMessageText('🎁 Кейс 150⭐... 🔄');
-      const outcomes = [
-        [0, 22], [15, 20], [25, 18], [50, 14], [100, 10], [200, 8], [225, 6]
-      ];
+      const values150 = [0, 15, 25, 50, 100, 200, 225];
+      const base150 = 20; const step150 = 2; // ��очти равные шансы, чуть выше у меньших
+      const outcomes = values150.sort((a,b)=>a-b).map((v,i)=>[v, base150 - step150*i]);
       const reward = weightedChoice(outcomes);
       if (reward > 0) await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + reward });
       await ctx.editMessageText(reward > 0 ? `🎉 Выигрыш: +${reward}⭐` : '🙁 Ничего не выпало');
@@ -64,9 +64,9 @@ export function registerCases(bot) {
       await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 250 });
       const m = await ctx.editMessageText('🎁 Кейс 250⭐...');
       await sleep(300); await ctx.editMessageText('🎁 Кейс 250⭐... 🔄');
-      const outcomes = [
-        [100, 20], [150, 16], [175, 14], [275, 10], [300, 8], [350, 6]
-      ];
+      const values250 = [100, 150, 175, 275, 300, 350];
+      const base250 = 18; const step250 = 2; // почти равные шансы, чуть выше у меньших
+      const outcomes = values250.sort((a,b)=>a-b).map((v,i)=>[v, base250 - step250*i]);
       const reward = weightedChoice(outcomes);
       await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + reward });
       await ctx.editMessageText(`🎉 Выигрыш: +${reward}⭐`);

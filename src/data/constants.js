@@ -1,9 +1,9 @@
 export const RESOURCES = [
-  { key: 'coal', name: 'Уголь', emoji: '⬛', priceMc: 1, chance: 0.5, min: 70, max: 400 },
-  { key: 'copper', name: 'Медь', emoji: '🟫', priceMc: 2, chance: 0.2, min: 30, max: 65 },
-  { key: 'iron', name: 'Железо', emoji: '⚙️', priceMc: 4, chance: 0.15, min: 12, max: 20 },
-  { key: 'gold', name: 'Золото', emoji: '🟨', priceMc: 5, chance: 0.08, min: 5, max: 7 },
-  { key: 'diamond', name: 'Алмаз', emoji: '💎', priceMc: 7, chance: 0.07, min: 1, max: 2 }
+  { key: 'coal', name: 'Уголь', emoji: '⬛', priceMc: 1, chance: 1, min: 70, max: 400 },
+  { key: 'copper', name: 'Медь', emoji: '🟫', priceMc: 2, chance: 0.50, min: 30, max: 65 },
+  { key: 'iron', name: 'Железо', emoji: '⚙️', priceMc: 4, chance: 0.35, min: 12, max: 20 },
+  { key: 'gold', name: 'Золото', emoji: '🟨', priceMc: 5, chance: 0.14, min: 5, max: 7 },
+  { key: 'diamond', name: 'Алмаз', emoji: '💎', priceMc: 7, chance: 0.08, min: 1, max: 2 }
 ];
 
 export const PICKAXE_LIMIT_MC = {
