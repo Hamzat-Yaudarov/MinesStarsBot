@@ -49,61 +49,80 @@ export function registerGames(bot) {
     }
 
     if (data.startsWith('ladder:bet:')) {
-      const bet = Number(data.split(':')[2]);
-      if (!LADDER_ALLOWED_BETS_STARS.includes(bet)) { await ctx.answerCbQuery('Недопустимая ставка'); return; }
-      if (Number(user.balance_stars||0) < bet) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
-      const layout = randomLayout();
-      await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - bet });
-      const game = await createLadderGame(user.tg_id, bet, layout);
-      await ctx.editMessageText(`🪜 Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nВыберите число:`, { reply_markup: levelKeyboard(1) });
-      return ctx.answerCbQuery('Игра начата');
+      const { withLock, isLocked } = await import('../utils/locks.js');
+      if (isLocked(ctx.from.id, 'ladder')) { await ctx.answerCbQuery('Дождитесь завершения операции'); return; }
+      await withLock(ctx.from.id, 'ladder', async () => {
+        const bet = Number(data.split(':')[2]);
+        if (!LADDER_ALLOWED_BETS_STARS.includes(bet)) { await ctx.answerCbQuery('Недопустимая ставка'); return; }
+        if (Number(user.balance_stars||0) < bet) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
+        const active = await getActiveLadderGame(user.tg_id);
+        if (active) { await ctx.answerCbQuery('Игра уже идёт'); return; }
+        const layout = randomLayout();
+        await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - bet });
+        const game = await createLadderGame(user.tg_id, bet, layout);
+        await ctx.editMessageText(`��� Лесенка — уровень 1 из ${LADDER_LEVELS}\nСтавка: ${bet}⭐\nВыберите число:`, { reply_markup: levelKeyboard(1) });
+        await ctx.answerCbQuery('Игра начата');
+      });
+      return;
     }
 
     if (data === 'ladder:cash') {
-      const game = await getActiveLadderGame(user.tg_id);
-      if (!game) { await ctx.answerCbQuery('Игра не найдена'); return; }
-      if (game.level <= 0) { await ctx.answerCbQuery('Нечего забирать'); return; }
-      const mult = LADDER_MULTIPLIERS[game.level - 1];
-      const payout = Math.floor(Number(game.bet_stars) * mult);
-      await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + payout });
-      await updateLadderGame(game.id, { status: 'cashed' });
-      await ctx.editMessageText(`✅ Забрано: ${payout}⭐ (уровней пройдено: ${game.level}, x${mult.toFixed(2)})`);
-      return ctx.answerCbQuery('Выплата');
-    }
-
-    if (data.startsWith('ladder:pick:')) {
-      const [, , levelStr, idxStr] = data.split(':');
-      const level = Number(levelStr);
-      const pick = Number(idxStr);
-      const game = await getActiveLadderGame(user.tg_id);
-      if (!game) { await ctx.answerCbQuery('Игра не найдена'); return; }
-      if (level !== Number(game.level) + 1) { await ctx.answerCbQuery('Неверный уровень'); return; }
-      const layout = game.layout;
-      const broken = (layout[String(level)] || []);
-
-      await ctx.editMessageText(`🪜 Уровень ${level} — проверяем...`);
-      await sleep(400);
-
-      if (broken.includes(pick)) {
-        await updateLadderGame(game.id, { status: 'lost' });
-        await ctx.editMessageText(`💥 Лестница сломана на ${level}-м уровне. Ставка сгорела.`);
-        return ctx.answerCbQuery('Проигрыш');
-      }
-
-      const nextLevel = level;
-      await updateLadderGame(game.id, { level: nextLevel });
-
-      if (nextLevel >= LADDER_LEVELS) {
-        const mult = LADDER_MULTIPLIERS[nextLevel - 1];
+      const { withLock, isLocked } = await import('../utils/locks.js');
+      if (isLocked(ctx.from.id, 'ladder')) { await ctx.answerCbQuery('Дождитесь завершения операции'); return; }
+      await withLock(ctx.from.id, 'ladder', async () => {
+        const game = await getActiveLadderGame(user.tg_id);
+        if (!game) { await ctx.answerCbQuery('Игра не найдена'); return; }
+        if (game.level <= 0) { await ctx.answerCbQuery('Нечего забирать'); return; }
+        const mult = LADDER_MULTIPLIERS[game.level - 1];
         const payout = Math.floor(Number(game.bet_stars) * mult);
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + payout });
         await updateLadderGame(game.id, { status: 'cashed' });
-        await ctx.editMessageText(`🏁 Максимум! Пройдено ${LADDER_LEVELS} уровней. Выплата ${payout}⭐`);
-        return ctx.answerCbQuery('Победа');
-      }
+        await ctx.editMessageText(`✅ Забрано: ${payout}⭐ (уровней пройдено: ${game.level}, x${mult.toFixed(2)})`);
+        await ctx.answerCbQuery('Выплата');
+      });
+      return;
+    }
 
-      await ctx.editMessageText(`✅ Уровень ${level} пройден!\nТекущий множитель: x${LADDER_MULTIPLIERS[nextLevel - 1].toFixed(2)}\nВыберите число на уровне ${nextLevel+1}:`, { reply_markup: levelKeyboard(nextLevel + 1) });
-      return ctx.answerCbQuery('Далее');
+    if (data.startsWith('ladder:pick:')) {
+      const { withLock, isLocked } = await import('../utils/locks.js');
+      if (isLocked(ctx.from.id, 'ladder')) { await ctx.answerCbQuery('Дождитесь завершения операции'); return; }
+      await withLock(ctx.from.id, 'ladder', async () => {
+        const [, , levelStr, idxStr] = data.split(':');
+        const level = Number(levelStr);
+        const pick = Number(idxStr);
+        const game = await getActiveLadderGame(user.tg_id);
+        if (!game) { await ctx.answerCbQuery('Игра не найдена'); return; }
+        if (level !== Number(game.level) + 1) { await ctx.answerCbQuery('Неверный уровень'); return; }
+        const layout = game.layout;
+        const broken = (layout[String(level)] || []);
+
+        await ctx.editMessageText(`🪜 Уровень ${level} — проверяем...`);
+        await sleep(400);
+
+        if (broken.includes(pick)) {
+          await updateLadderGame(game.id, { status: 'lost' });
+          await ctx.editMessageText(`💥 Лестница сломана на ${level}-м уровне. Ставка сгорела.`);
+          await ctx.answerCbQuery('Проигрыш');
+          return;
+        }
+
+        const nextLevel = level;
+        await updateLadderGame(game.id, { level: nextLevel });
+
+        if (nextLevel >= LADDER_LEVELS) {
+          const mult = LADDER_MULTIPLIERS[nextLevel - 1];
+          const payout = Math.floor(Number(game.bet_stars) * mult);
+          await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + payout });
+          await updateLadderGame(game.id, { status: 'cashed' });
+          await ctx.editMessageText(`🏁 Максимум! Пройдено ${LADDER_LEVELS} уровней. Выплата ${payout}⭐`);
+          await ctx.answerCbQuery('Победа');
+          return;
+        }
+
+        await ctx.editMessageText(`✅ Уровень ${level} пройден!\nТекущий множитель: x${LADDER_MULTIPLIERS[nextLevel - 1].toFixed(2)}\nВыберите число на уровне ${nextLevel+1}:`, { reply_markup: levelKeyboard(nextLevel + 1) });
+        await ctx.answerCbQuery('Далее');
+      });
+      return;
     }
   });
 }

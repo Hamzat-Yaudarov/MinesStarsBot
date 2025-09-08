@@ -52,7 +52,7 @@ export function registerWithdraw(bot) {
         const balance = Number(user.balance_stars||0);
         if (balance < total) { await ctx.answerCbQuery(`Нужно ${total}⭐ на балансе`); return; }
         await ctx.editMessageText(`Подтвердить вывод ${amount}⭐ (комиссия ${fee}⭐, всего спишется ${total}⭐)?`, {
-          reply_markup: { inline_keyboard: [[{ text: '✅ Подтвердить', callback_data: `wd:confirm:${amount}` }], [{ text: '↩️ Назад', callback_data: 'wd:back' }]] }
+          reply_markup: { inline_keyboard: [[{ text: '✅ Подтвердить', callback_data: `wd:confirm:${amount}` }], [{ text: '↩️ Наз��д', callback_data: 'wd:back' }]] }
         });
         return ctx.answerCbQuery();
       }
@@ -63,23 +63,26 @@ export function registerWithdraw(bot) {
       }
 
       if (data.startsWith('wd:confirm:')) {
-        const amount = Number(data.split(':')[2]);
-        const fee = Math.ceil(amount * 0.10);
-        const total = amount + fee;
-        const balance = Number(user.balance_stars||0);
-        if (balance < total) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
-        await updateUser(user.tg_id, { balance_stars: balance - total });
-        const w = await createWithdrawal(user.tg_id, amount, fee);
-        const info = formatUserInfo(user);
-        const text = `Новая заявка на вывод #${w.id}\nПользователь:\n${info}\nСумма: ${amount}⭐\nКомиссия: ${fee}⭐\nСписано всего: ${total}⭐`;
-        try {
-          const m = await ctx.telegram.sendMessage(ADMIN_REVIEW_CHAT, text, { reply_markup: adminButtons(w.id) });
-          await updateWithdrawal(w.id, { admin_msg_chat_id: ADMIN_REVIEW_CHAT, admin_msg_message_id: m.message_id });
-        } catch (e) {
-          // ignore send errors
-        }
-        await ctx.editMessageText(`✅ Заявка #${w.id} создана: ${amount}⭐ (комиссия ${fee}⭐). Статус: pending.`);
-        return ctx.answerCbQuery('Заявка создана');
+        const { withLock, isLocked } = await import('../utils/locks.js');
+        if (isLocked(ctx.from.id, 'withdraw')) { await ctx.answerCbQuery('Уже создаём заявку', { show_alert: true }); return; }
+        await withLock(ctx.from.id, 'withdraw', async () => {
+          const amount = Number(data.split(':')[2]);
+          const fee = Math.ceil(amount * 0.10);
+          const total = amount + fee;
+          const balance = Number(user.balance_stars||0);
+          if (balance < total) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
+          await updateUser(user.tg_id, { balance_stars: balance - total });
+          const w = await createWithdrawal(user.tg_id, amount, fee);
+          const info = formatUserInfo(user);
+          const text = `Новая заявка на вывод #${w.id}\nПользователь:\n${info}\nСумма: ${amount}⭐\nКомиссия: ${fee}⭐\nСписано всего: ${total}⭐`;
+          try {
+            const m = await ctx.telegram.sendMessage(ADMIN_REVIEW_CHAT, text, { reply_markup: adminButtons(w.id) });
+            await updateWithdrawal(w.id, { admin_msg_chat_id: ADMIN_REVIEW_CHAT, admin_msg_message_id: m.message_id });
+          } catch (e) {}
+          await ctx.editMessageText(`✅ Заявка #${w.id} создана: ${amount}⭐ (комиссия ${fee}⭐). Статус: pending.`);
+          await ctx.answerCbQuery('Заявка создана');
+        });
+        return;
       }
     }
 
@@ -93,12 +96,18 @@ export function registerWithdraw(bot) {
       const user = await getUser(w.user_tg_id);
 
       if (action === 'approve') {
-        await updateWithdrawal(id, { status: 'completed', reviewed_by_tg_id: ctx.from.id, reviewed_at: new Date().toISOString(), refunded: false });
-        const doneText = `✅ Выполнена заявка #${id}\nПользователь @${user?.username || '-'} (ID ${w.user_tg_id})\nСумма: ${w.amount_stars}⭐`;
-        try { await ctx.telegram.editMessageText(w.admin_msg_chat_id || ctx.chat.id, w.admin_msg_message_id || ctx.callbackQuery.message.message_id, undefined, doneText); } catch {}
-        try { await ctx.telegram.sendMessage(ADMIN_DONE_CHAT, doneText); } catch {}
-        try { await ctx.telegram.sendMessage(w.user_tg_id, `✅ Ваша заявка #${id} выполнена.`); } catch {}
-        return ctx.answerCbQuery('Готово');
+        const { withLock } = await import('../utils/locks.js');
+        await withLock('admin', `wd:${id}`, async () => {
+          const cur = await getWithdrawalById(id);
+          if (!cur || cur.status !== 'pending') { await ctx.answerCbQuery('Заявка уже обработана'); return; }
+          await updateWithdrawal(id, { status: 'completed', reviewed_by_tg_id: ctx.from.id, reviewed_at: new Date().toISOString(), refunded: false });
+          const doneText = `✅ Выполнена заявка #${id}\nПользователь @${user?.username || '-'} (ID ${w.user_tg_id})\nСумма: ${w.amount_stars}⭐`;
+          try { await ctx.telegram.editMessageText(w.admin_msg_chat_id || ctx.chat.id, w.admin_msg_message_id || ctx.callbackQuery.message.message_id, undefined, doneText); } catch {}
+          try { await ctx.telegram.sendMessage(ADMIN_DONE_CHAT, doneText); } catch {}
+          try { await ctx.telegram.sendMessage(w.user_tg_id, `✅ Ваша заявка #${id} выполнена.`); } catch {}
+          await ctx.answerCbQuery('Готово');
+        });
+        return;
       }
 
       if (action === 'reject') {
@@ -114,6 +123,8 @@ export function registerWithdraw(bot) {
       if (action === 'rejopt') {
         const choice = parts[3];
         const refund = choice === 'yes';
+        const cur = await getWithdrawalById(id);
+        if (!cur || cur.status !== 'pending') { await ctx.answerCbQuery('Заявка уже обраб��тана'); return; }
         awaitingAdminReason.set(ctx.from.id, { id, refund });
         await ctx.editMessageText('Укажите причину отклонения сообщением:');
         return ctx.answerCbQuery();

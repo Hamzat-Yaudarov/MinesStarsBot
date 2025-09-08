@@ -60,6 +60,10 @@ export function registerMine(bot) {
         return;
       }
 
+      // per-user lock
+      const { withLock, isLocked } = await import('../utils/locks.js');
+      if (isLocked(ctx.from.id, 'mine')) { await ctx.answerCbQuery('Идёт копка, подождите...', { show_alert: true }); return; }
+
       const anim = await ctx.reply('⛏ Копаю');
       const frames = ['⛏ Копаю', '⛏ Копаю.', '⛏ Копаю..', '⛏ Копаю...'];
       let running = true;
