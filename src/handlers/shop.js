@@ -84,7 +84,9 @@ export function registerShop(bot) {
     if (data === 'shop:pickaxe:stars') {
       if (user.pickaxe_level > 0) { await ctx.answerCbQuery('Кирка уже куплена', { show_alert: true }); return; }
       if (Number(user.balance_stars||0) < 50) { await ctx.answerCbQuery('Не хватает ⭐', { show_alert: true }); return; }
+      const { addLedger } = await import('../db/index.js');
       await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 50, pickaxe_level: 1 });
+      await addLedger(user.tg_id, -50, 'pickaxe_first_stars');
       await ctx.editMessageText('✅ Кирка куплена за 50 ⭐. Теперь можно копать!');
       return ctx.answerCbQuery('Готово');
     }
@@ -104,10 +106,12 @@ export function registerShop(bot) {
     if (p.dir === 'mc2stars') {
       const needMc = n * MC_PER_STAR;
       if (Number(user.balance_mc||0) < needMc) { await ctx.reply(`Нужно ${needMc} MC`); return; }
+      const { addLedger } = await import('../db/index.js');
       await updateUser(user.tg_id, {
         balance_mc: Number(user.balance_mc) - needMc,
         balance_stars: Number(user.balance_stars||0) + n
       });
+      await addLedger(user.tg_id, n, 'exchange_mc2stars');
       awaiting.delete(ctx.from.id);
       await ctx.reply(`✅ Обмен: -${needMc} MC → +${n} ⭐`);
       return;
@@ -116,10 +120,12 @@ export function registerShop(bot) {
     if (p.dir === 'stars2mc') {
       if (Number(user.balance_stars||0) < n) { await ctx.reply('Не хватает ⭐'); return; }
       const gainMc = n * MC_PER_STAR;
+      const { addLedger } = await import('../db/index.js');
       await updateUser(user.tg_id, {
         balance_stars: Number(user.balance_stars) - n,
         balance_mc: Number(user.balance_mc||0) + gainMc
       });
+      await addLedger(user.tg_id, -n, 'exchange_stars2mc');
       awaiting.delete(ctx.from.id);
       await ctx.reply(`✅ Обмен: -${n} ⭐ → +${gainMc} MC`);
       return;

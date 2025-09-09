@@ -11,6 +11,7 @@ import { registerGames } from './handlers/games.js';
 import { registerPayments } from './handlers/payments.js';
 import { registerWithdraw } from './handlers/withdraw.js';
 import { registerNfts } from './handlers/nfts.js';
+import { registerAdmin } from './handlers/admin.js';
 
 async function main() {
   await initDb();
@@ -26,6 +27,7 @@ async function main() {
   registerPayments(bot);
   registerWithdraw(bot);
   registerNfts(bot);
+  registerAdmin(bot);
 
   await bot.launch();
   console.log('Mines Stars bot launched');

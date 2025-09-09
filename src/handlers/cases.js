@@ -27,12 +27,16 @@ export function registerCases(bot) {
       if (isLocked(ctx.from.id, 'cases')) { await ctx.answerCbQuery('Уже открываем кейс'); return; }
       await withLock(ctx.from.id, 'cases', async () => {
         if (Number(user.balance_stars||0) < 100) { await ctx.answerCbQuery('Не хватает ⭐'); return; }
+        const { addLedger } = await import('../db/index.js');
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 100 });
+        await addLedger(user.tg_id, -100, 'case_100_buy');
         await ctx.editMessageText('🎁 Кейс 100⭐...');
         await sleep(300); await ctx.editMessageText('🎁 Кейс 100⭐... 🔄');
         const outcomes = CASE100_REWARDS.map(x => [x.amount, x.weight]);
         const reward = weightedChoice(outcomes);
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + reward });
+        const { addLedger } = await import('../db/index.js');
+        await addLedger(user.tg_id, reward, 'case_100_reward');
         await ctx.editMessageText(`🎉 Выигрыш: +${reward}⭐`);
         await ctx.answerCbQuery('Открыто');
       });
@@ -48,6 +52,7 @@ export function registerCases(bot) {
         await ctx.editMessageText('🪪 Кейс 700⭐ (NFT)...');
         await sleep(300); await ctx.editMessageText('🪪 Кейс 700⭐ (NFT)... 🔄');
         const pick = weightedChoice(CASE700_WEIGHTS.map(x => [x.type, x.weight]));
+        const { addLedger } = await import('../db/index.js');
         const nft = await assignRandomNftOfType(pick, user.tg_id);
         if (!nft) {
           await ctx.editMessageText('🙁 Временно нет доступных NFT этого типа. Стоимость кейса возвращена.');
@@ -58,6 +63,7 @@ export function registerCases(bot) {
         const latest = await getUser(ctx.from.id);
         if (Number(latest.balance_stars||0) < 700) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
         await updateUser(latest.tg_id, { balance_stars: Number(latest.balance_stars) - 700 });
+        await addLedger(user.tg_id, -700, 'case_700_buy');
         await ctx.editMessageText(`🎉 Выпал NFT: ${nft.type}\nID: ${nft.id}\nСсылка: ${nft.tg_link}`);
         await ctx.answerCbQuery('Готово');
       });

@@ -91,6 +91,14 @@ export async function initDb() {
       admin_msg_message_id bigint,
       created_at timestamptz not null default now()
     );
+
+    create table if not exists star_ledger (
+      id bigserial primary key,
+      user_tg_id bigint not null references users(tg_id) on delete cascade,
+      amount bigint not null,
+      reason text not null,
+      created_at timestamptz not null default now()
+    );
   `);
 }
 
@@ -254,6 +262,10 @@ export async function updateNftWithdrawal(id, fields) {
   const values = keys.map(k=>fields[k]);
   values.push(id);
   await pool.query(`update nft_withdrawals set ${sets} where id=$${values.length}`, values);
+}
+
+export async function addLedger(tgId, amount, reason) {
+  await pool.query('insert into star_ledger (user_tg_id, amount, reason) values ($1,$2,$3)', [tgId, amount, reason]);
 }
 
 export async function getWithdrawalById(id) {
