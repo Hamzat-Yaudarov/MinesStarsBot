@@ -43,18 +43,21 @@ export function registerCases(bot) {
       const { withLock, isLocked } = await import('../utils/locks.js');
       if (isLocked(ctx.from.id, 'cases')) { await ctx.answerCbQuery('Уже открываем кейс'); return; }
       await withLock(ctx.from.id, 'cases', async () => {
-        if (Number(user.balance_stars||0) < 700) { await ctx.answerCbQuery('Не хватает ⭐'); return; }
-        await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars) - 700 });
+        const fresh = await getUser(ctx.from.id);
+        if (Number(fresh.balance_stars||0) < 700) { await ctx.answerCbQuery('Не хватает ⭐'); return; }
         await ctx.editMessageText('🪪 Кейс 700⭐ (NFT)...');
         await sleep(300); await ctx.editMessageText('🪪 Кейс 700⭐ (NFT)... 🔄');
         const pick = weightedChoice(CASE700_WEIGHTS.map(x => [x.type, x.weight]));
         const nft = await assignRandomNftOfType(pick, user.tg_id);
         if (!nft) {
-          await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + 700 });
           await ctx.editMessageText('🙁 Временно нет доступных NFT этого типа. Стоимость кейса возвращена.');
           await ctx.answerCbQuery('Нет NFT');
           return;
         }
+        // Deduct only after NFT reserved
+        const latest = await getUser(ctx.from.id);
+        if (Number(latest.balance_stars||0) < 700) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
+        await updateUser(latest.tg_id, { balance_stars: Number(latest.balance_stars) - 700 });
         await ctx.editMessageText(`🎉 Выпал NFT: ${nft.type}\nID: ${nft.id}\nСсылка: ${nft.tg_link}`);
         await ctx.answerCbQuery('Готово');
       });

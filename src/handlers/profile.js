@@ -25,18 +25,6 @@ export function registerProfile(bot) {
     ].join('\n');
 
     await ctx.reply(text, {
-      reply_markup: {
-        keyboard: [
-          [MAIN_MENU.PROFILE, MAIN_MENU.MINE],
-          [MAIN_MENU.SELL, MAIN_MENU.SHOP],
-          [MAIN_MENU.CASES, MAIN_MENU.GAMES],
-          [MAIN_MENU.DEPOSIT, MAIN_MENU.WITHDRAW]
-        ],
-        resize_keyboard: true
-      }
-    });
-
-    await ctx.reply('Действия профиля', {
       reply_markup: { inline_keyboard: [[{ text: '🪪 Мои NFT', callback_data: 'profile:nfts' }]] }
     });
   });
