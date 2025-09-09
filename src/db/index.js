@@ -92,6 +92,11 @@ export async function initDb() {
       admin_msg_message_id bigint,
       created_at timestamptz not null default now()
     );
+
+    create table if not exists settings (
+      key text primary key,
+      value text not null
+    );
   `);
 }
 
@@ -264,6 +269,15 @@ export async function updateNftWithdrawal(id, fields) {
   const values = keys.map(k=>fields[k]);
   values.push(id);
   await pool.query(`update nft_withdrawals set ${sets} where id=$${values.length}`, values);
+}
+
+export async function getSetting(key) {
+  const { rows } = await pool.query('select value from settings where key=$1', [key]);
+  return rows[0]?.value || null;
+}
+
+export async function setSetting(key, value) {
+  await pool.query('insert into settings(key,value) values ($1,$2) on conflict(key) do update set value=excluded.value', [key, value]);
 }
 
 export async function getWithdrawalById(id) {

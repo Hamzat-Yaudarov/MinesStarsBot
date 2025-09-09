@@ -1,4 +1,4 @@
-import { getUser, getUserNfts, createNftWithdrawal, getNftWithdrawalById, updateNftWithdrawal } from '../db/index.js';
+import { getUser, getUserNfts, createNftWithdrawal, getNftWithdrawalById, updateNftWithdrawal, getSetting } from '../db/index.js';
 import { ADMIN_NFT_REVIEW_CHAT, ADMIN_DONE_CHAT } from '../config.js';
 
 const awaitingNftRejectReason = new Map(); // adminId -> { id, returnNft }
@@ -44,14 +44,19 @@ export function registerNfts(bot) {
         const req = await createNftWithdrawal(user.tg_id, id);
         const text = `Заявка на вывод NFT #${req.id}\nПользователь: @${user.username || '-'} (ID ${user.tg_id})\nNFT: #${nft.id} ${nft.type}\nСсылка: ${nft.tg_link}`;
         try {
-          const m = await ctx.telegram.sendMessage(ADMIN_NFT_REVIEW_CHAT, text, {
+          const reviewChat = (await getSetting('nft_review_chat')) || ADMIN_NFT_REVIEW_CHAT;
+          const m = await ctx.telegram.sendMessage(reviewChat, text, {
             reply_markup: { inline_keyboard: [[
               { text: '✅ Выполнено', callback_data: `nftadmin:approve:${req.id}` },
               { text: '⛔ Отклонить', callback_data: `nftadmin:reject:${req.id}` }
             ]]}
           });
-          await updateNftWithdrawal(req.id, { admin_msg_chat_id: ADMIN_NFT_REVIEW_CHAT, admin_msg_message_id: m.message_id });
-        } catch {}
+          await updateNftWithdrawal(req.id, { admin_msg_chat_id: reviewChat, admin_msg_message_id: m.message_id });
+        } catch (e) {
+          await ctx.editMessageText('❗ Не удалось отправить заявку в админ-чат. Проверьте, что бот добавлен и у него есть права.');
+          await ctx.answerCbQuery('Ошибка');
+          return;
+        }
         await ctx.editMessageText(`✅ Заявка #${req.id} на вывод NFT отправлена админам.`);
         await ctx.answerCbQuery('Отправлено');
       });
@@ -84,7 +89,7 @@ export function registerNfts(bot) {
           await updateNft(cur.nft_id, { assigned: false, assigned_to_tg_id: null, withdrawing: false });
           const doneText = `✅ Выполнена заявка NFT #${id}`;
           try { await ctx.telegram.editMessageText(cur.admin_msg_chat_id || ctx.chat.id, cur.admin_msg_message_id || ctx.callbackQuery.message.message_id, undefined, doneText); } catch {}
-          try { await ctx.telegram.sendMessage(ADMIN_DONE_CHAT, doneText); } catch {}
+          try { const doneChat = (await getSetting('done_chat')) || ADMIN_DONE_CHAT; await ctx.telegram.sendMessage(doneChat, doneText); } catch {}
           try { await ctx.telegram.sendMessage(cur.user_tg_id, `✅ Ваша заявка NFT #${id} выполнена.`); } catch {}
           await ctx.answerCbQuery('Готово');
         });
