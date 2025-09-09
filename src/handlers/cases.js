@@ -35,7 +35,6 @@ export function registerCases(bot) {
         const outcomes = CASE100_REWARDS.map(x => [x.amount, x.weight]);
         const reward = weightedChoice(outcomes);
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + reward });
-        const { addLedger } = await import('../db/index.js');
         await addLedger(user.tg_id, reward, 'case_100_reward');
         await ctx.editMessageText(`🎉 Выигрыш: +${reward}⭐`);
         await ctx.answerCbQuery('Открыто');
