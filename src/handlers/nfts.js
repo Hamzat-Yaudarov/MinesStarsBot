@@ -28,18 +28,18 @@ export function registerNfts(bot) {
     }
 
     if (data.startsWith('nft:withdraw:')) {
-      const id = Number(data.split(':')[2]);
+      const id = data.split(':')[2];
       const list = await getUserNfts(user.tg_id);
-      const nft = list.find(n => n.id === id);
+      const nft = list.find(n => String(n.id) === id);
       if (!nft) { await ctx.answerCbQuery('NFT не найдено', { show_alert: true }); return; }
-      const req = await createNftWithdrawal(user.tg_id, id);
+      const req = await createNftWithdrawal(user.tg_id, Number(id));
       const text = `Заявка на вывод NFT #${req.id}\nПользователь: @${user.username || '-'} (ID ${user.tg_id})\nNFT: #${nft.id} ${nft.type}\nСсылка: ${nft.tg_link}`;
       try {
         const m = await ctx.telegram.sendMessage(ADMIN_NFT_REVIEW_CHAT, text, {
           reply_markup: { inline_keyboard: [[
             { text: '✅ Выполнено', callback_data: `nftadmin:approve:${req.id}` },
             { text: '⛔ Отклонить', callback_data: `nftadmin:reject:${req.id}` }
-          ]]} 
+          ]]}
         });
         await updateNftWithdrawal(req.id, { admin_msg_chat_id: ADMIN_NFT_REVIEW_CHAT, admin_msg_message_id: m.message_id });
       } catch {}

@@ -15,27 +15,32 @@ function adminMenuKb(){
 }
 
 async function getStats() {
-  const [[users], [spent], [earned], [deposits], [wd]] = await Promise.all([
-    pool.query('select count(*)::int as c from users'),
-    pool.query("select coalesce(sum(case when amount<0 then -amount else 0 end),0)::bigint as s from star_ledger"),
-    pool.query("select coalesce(sum(case when amount>0 then amount else 0 end),0)::bigint as s from star_ledger"),
-    pool.query("select coalesce(sum(amount_stars),0)::bigint as s from payments where status='success' and type='deposit'"),
-    pool.query("select coalesce(sum(total_stars),0)::bigint as s from withdrawals where status='completed'")
-  ]);
-  const totalUsers = users.rows[0].c;
-  const starsSpent = String(spent.rows[0].s);
-  const starsEarned = String(earned.rows[0].s);
-  const botNet = (BigInt(deposits.rows[0].s) - BigInt(wd.rows[0].s)).toString();
+  let totalUsers = 0;
+  let starsSpent = '0';
+  let starsEarned = '0';
+  let depositsStr = '0';
+  let wdStr = '0';
+  let activeToday = 0;
 
-  const { rows: activeRows } = await pool.query(`
-    select count(distinct x.tg_id)::int as c from (
-      select tg_id from users where created_at::date=now()::date or (last_dig_at is not null and last_dig_at::date=now()::date)
-      union all select user_tg_id as tg_id from star_ledger where created_at::date=now()::date
-      union all select user_tg_id as tg_id from payments where created_at::date=now()::date
-      union all select user_tg_id as tg_id from ladder_games where created_at::date=now()::date
-      union all select user_tg_id as tg_id from withdrawals where created_at::date=now()::date
-    ) x`);
-  const activeToday = activeRows[0].c;
+  try { const r = await pool.query('select count(*)::int as c from users'); totalUsers = Number(r.rows[0]?.c||0); } catch {}
+  try { const r = await pool.query("select coalesce(sum(case when amount<0 then -amount else 0 end),0)::bigint as s from star_ledger"); starsSpent = String(r.rows[0]?.s||0); } catch {}
+  try { const r = await pool.query("select coalesce(sum(case when amount>0 then amount else 0 end),0)::bigint as s from star_ledger"); starsEarned = String(r.rows[0]?.s||0); } catch {}
+  try { const r = await pool.query("select coalesce(sum(amount_stars),0)::bigint as s from payments where status='success' and type='deposit'"); depositsStr = String(r.rows[0]?.s||0); } catch {}
+  try { const r = await pool.query("select coalesce(sum(total_stars),0)::bigint as s from withdrawals where status='completed'"); wdStr = String(r.rows[0]?.s||0); } catch {}
+  try {
+    const { rows } = await pool.query(`
+      select count(distinct x.tg_id)::int as c from (
+        select tg_id from users where created_at::date=now()::date or (last_dig_at is not null and last_dig_at::date=now()::date)
+        union all select user_tg_id as tg_id from star_ledger where created_at::date=now()::date
+        union all select user_tg_id as tg_id from payments where created_at::date=now()::date
+        union all select user_tg_id as tg_id from ladder_games where created_at::date=now()::date
+        union all select user_tg_id as tg_id from withdrawals where created_at::date=now()::date
+      ) x`);
+    activeToday = Number(rows[0]?.c||0);
+  } catch {}
+
+  let botNet = '0';
+  try { botNet = (BigInt(depositsStr) - BigInt(wdStr)).toString(); } catch { botNet = '0'; }
 
   return { totalUsers, activeToday, starsSpent, starsEarned, botNet };
 }
