@@ -12,6 +12,7 @@ import { registerPayments } from './handlers/payments.js';
 import { registerWithdraw } from './handlers/withdraw.js';
 import { registerNfts } from './handlers/nfts.js';
 import { registerAdmin } from './handlers/admin.js';
+import { pool } from './db/index.js';
 
 async function main() {
   await initDb();
@@ -22,6 +23,14 @@ async function main() {
   registerMine(bot);
   registerSell(bot);
   registerShop(bot);
+  // last_seen middleware
+  bot.use(async (ctx, next) => {
+    if (ctx.from?.id) {
+      try { await pool.query('update users set last_seen_at=now() where tg_id=$1', [ctx.from.id]); } catch {}
+    }
+    return next();
+  });
+
   registerCases(bot);
   registerGames(bot);
   registerPayments(bot);

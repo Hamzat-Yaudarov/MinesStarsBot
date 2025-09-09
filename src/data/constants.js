@@ -43,7 +43,8 @@ export const MAIN_MENU = {
   CASES: '🎁 Кейсы',
   GAMES: '🎲 Игры',
   DEPOSIT: '💳 Пополнение',
-  WITHDRAW: '🏦 Вывод'
+  WITHDRAW: '🏦 Вывод',
+  ADMIN: '🛡️ Админ-панель'
 };
 
 export const LADDER_LEVELS = 7;

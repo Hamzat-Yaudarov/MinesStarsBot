@@ -26,6 +26,7 @@ export async function initDb() {
     );
 
     create index if not exists idx_users_tg_id on users(tg_id);
+    alter table users add column if not exists last_seen_at timestamptz;
 
     create table if not exists payments (
       id bigserial primary key,
@@ -91,11 +92,6 @@ export async function initDb() {
       admin_msg_chat_id text,
       admin_msg_message_id bigint,
       created_at timestamptz not null default now()
-    );
-
-    create table if not exists settings (
-      key text primary key,
-      value text not null
     );
   `);
 }
@@ -233,6 +229,40 @@ export async function updateNft(id, fields) {
   await pool.query(`update nfts set ${sets} where id=$${values.length}`, values);
 }
 
+export async function addNftsBulk(items) {
+  const client = await pool.connect();
+  let inserted = 0, skipped = 0;
+  try {
+    await client.query('begin');
+    for (const it of items) {
+      const res = await client.query(
+        'insert into nfts (type, tg_link) values ($1,$2) on conflict (tg_link) do nothing',
+        [it.type, it.tg_link]
+      );
+      inserted += res.rowCount || 0;
+      if ((res.rowCount || 0) === 0) skipped += 1;
+    }
+    await client.query('commit');
+    return { inserted, skipped };
+  } catch (e) {
+    await client.query('rollback');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function getStats() {
+  const { rows: u } = await pool.query('select count(*)::int as c from users');
+  const { rows: a } = await pool.query("select count(*)::int as c from users where last_seen_at::date = now()::date");
+  const { rows: n } = await pool.query("select type, count(*)::int as c from nfts where assigned=false and withdrawing=false group by type");
+  return {
+    users_total: u[0]?.c || 0,
+    users_active_today: a[0]?.c || 0,
+    nfts_available: n
+  };
+}
+
 export async function assignRandomNftOfType(type, tgId) {
   const client = await pool.connect();
   try {
@@ -269,15 +299,6 @@ export async function updateNftWithdrawal(id, fields) {
   const values = keys.map(k=>fields[k]);
   values.push(id);
   await pool.query(`update nft_withdrawals set ${sets} where id=$${values.length}`, values);
-}
-
-export async function getSetting(key) {
-  const { rows } = await pool.query('select value from settings where key=$1', [key]);
-  return rows[0]?.value || null;
-}
-
-export async function setSetting(key, value) {
-  await pool.query('insert into settings(key,value) values ($1,$2) on conflict(key) do update set value=excluded.value', [key, value]);
 }
 
 export async function getWithdrawalById(id) {
