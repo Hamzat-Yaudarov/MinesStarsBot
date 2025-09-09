@@ -78,8 +78,6 @@ export function registerGames(bot) {
         const mult = LADDER_MULTIPLIERS[game.level - 1];
         const payout = Math.floor(Number(game.bet_stars) * mult);
         await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + payout });
-        const { addLedger } = await import('../db/index.js');
-        await addLedger(user.tg_id, payout, 'ladder_cashout');
         await updateLadderGame(game.id, { status: 'cashed' });
         await ctx.editMessageText(`✅ Забрано: ${payout}⭐ (уровней пройдено: ${game.level}, x${mult.toFixed(2)})`);
         await ctx.answerCbQuery('Выплата');
@@ -117,8 +115,6 @@ export function registerGames(bot) {
           const mult = LADDER_MULTIPLIERS[nextLevel - 1];
           const payout = Math.floor(Number(game.bet_stars) * mult);
           await updateUser(user.tg_id, { balance_stars: Number(user.balance_stars||0) + payout });
-          const { addLedger } = await import('../db/index.js');
-          await addLedger(user.tg_id, payout, 'ladder_max');
           await updateLadderGame(game.id, { status: 'cashed' });
           await ctx.editMessageText(`🏁 Максимум! Пройдено ${LADDER_LEVELS} уровней. Выплата ${payout}⭐`);
           await ctx.answerCbQuery('Победа');

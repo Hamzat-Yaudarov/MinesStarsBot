@@ -56,8 +56,6 @@ export function registerPayments(bot) {
     if (!user) return;
     await updateUser(tgId, { balance_stars: Number(user.balance_stars||0) + stars });
     await pool.query('insert into payments (user_tg_id, amount_stars, type, status) values ($1,$2,$3,$4)', [tgId, stars, 'deposit', 'success']);
-    const { addLedger } = await import('../db/index.js');
-    await addLedger(tgId, stars, 'deposit');
     await ctx.reply(`✅ Пополнение: +${stars}⭐`);
   });
 }

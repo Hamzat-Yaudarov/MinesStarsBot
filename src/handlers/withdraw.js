@@ -73,9 +73,7 @@ export function registerWithdraw(bot) {
           if (balance < total) { await ctx.answerCbQuery('Недостаточно ⭐'); return; }
           await updateUser(user.tg_id, { balance_stars: balance - total });
           const w = await createWithdrawal(user.tg_id, amount, fee);
-        const { addLedger } = await import('../db/index.js');
-        await addLedger(user.tg_id, -total, 'withdraw_request');
-        const info = formatUserInfo(user);
+          const info = formatUserInfo(user);
           const text = `Новая заявка на вывод #${w.id}\nПользователь:\n${info}\nСумма: ${amount}⭐\nКомиссия: ${fee}⭐\nСписано всего: ${total}⭐`;
           try {
             const m = await ctx.telegram.sendMessage(ADMIN_REVIEW_CHAT, text, { reply_markup: adminButtons(w.id) });
