@@ -222,7 +222,7 @@ export async function listWithdrawals(tgId, limit = 5) {
 }
 
 export async function getUserNfts(tgId) {
-  const { rows } = await pool.query('select id, type, tg_link from nfts where assigned=true and assigned_to_tg_id=$1 order by id desc', [tgId]);
+  const { rows } = await pool.query('select id, type, tg_link from nfts where assigned_to_tg_id=$1 order by id desc', [tgId]);
   return rows;
 }
 

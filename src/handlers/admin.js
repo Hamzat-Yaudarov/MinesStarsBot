@@ -53,10 +53,19 @@ export function registerAdmin(bot) {
 
 
     if (data === 'admin:stats') {
-      const s = await getStats();
-      const text = `📊 Статистика\nПользователей всего: ${s.totalUsers}\nАктивных сегодня: ${s.activeToday}\nЗвёзды: потрачено ${s.starsSpent}, заработано ${s.starsEarned}\nЧистыми бот: ${s.botNet}`;
-      await ctx.editMessageText(text, { reply_markup: adminMenuKb() });
-      return ctx.answerCbQuery();
+      try { await ctx.answerCbQuery('Открываю…'); } catch {}
+      try {
+        const s = await getStats();
+        const text = `📊 Статистика\nПользователей всего: ${s.totalUsers}\nАктивных сегодня: ${s.activeToday}\nЗвёзды: потрачено ${s.starsSpent}, заработано ${s.starsEarned}\nЧистыми бот: ${s.botNet}`;
+        try {
+          await ctx.editMessageText(text, { reply_markup: adminMenuKb() });
+        } catch {
+          await ctx.reply(text, { reply_markup: adminMenuKb() });
+        }
+      } catch {
+        try { await ctx.reply('Не удалось получить статистику'); } catch {}
+      }
+      return;
     }
 
     if (data === 'admin:nft:add') {
