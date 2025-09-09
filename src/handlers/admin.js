@@ -28,6 +28,11 @@ export function registerAdmin(bot) {
 
   bot.on('callback_query', async (ctx, next) => {
     const data = ctx.callbackQuery?.data || '';
+    if (data === 'admin:open') {
+      if (!isAdmin(ctx.from.id)) { await ctx.answerCbQuery('Нет доступа', { show_alert: true }); return; }
+      await ctx.editMessageText('🛠️ Админ-панель', { reply_markup: adminMenu() });
+      return ctx.answerCbQuery();
+    }
     if (!data.startsWith('admin:')) return next();
     if (!isAdmin(ctx.from.id)) { await ctx.answerCbQuery('Нет доступа', { show_alert: true }); return; }
 

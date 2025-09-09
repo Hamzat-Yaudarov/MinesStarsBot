@@ -24,8 +24,10 @@ export function registerProfile(bot) {
       invSummary(inv)
     ].join('\n');
 
-    await ctx.reply(text, {
-      reply_markup: { inline_keyboard: [[{ text: '🪪 Мои NFT', callback_data: 'profile:nfts' }]] }
-    });
+    const { ADMIN_IDS } = await import('../config.js');
+    const isAdmin = ADMIN_IDS.includes(Number(ctx.from.id));
+    const inline = [[{ text: '🪪 Мои NFT', callback_data: 'profile:nfts' }]];
+    if (isAdmin) inline.push([{ text: '🛠️ Админ-панель', callback_data: 'admin:open' }]);
+    await ctx.reply(text, { reply_markup: { inline_keyboard: inline } });
   });
 }
