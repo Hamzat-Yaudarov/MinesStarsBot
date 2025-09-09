@@ -1,5 +1,6 @@
 import { ADMIN_IDS } from '../config.js';
 import { getUser, pool } from '../db/index.js';
+import { NFT_TYPES } from '../data/constants.js';
 
 const awaiting = new Map(); // adminId -> { mode: 'nft_single'|'nft_batch' }
 
@@ -9,8 +10,7 @@ function adminMenuKb(){
   return { inline_keyboard: [
     [{ text: '📊 Статистика', callback_data: 'admin:stats' }],
     [{ text: '➕ Добавить NFT', callback_data: 'admin:nft:add' }],
-    [{ text: '📦 Массовое добавление NFT', callback_data: 'admin:nft:batch' }],
-    [{ text: '↩️ К пользователю', callback_data: 'admin:back' }]
+    [{ text: '📦 Массовое добавление NFT', callback_data: 'admin:nft:batch' }]
   ]};
 }
 
@@ -23,9 +23,9 @@ async function getStats() {
     pool.query("select coalesce(sum(total_stars),0)::bigint as s from withdrawals where status='completed'")
   ]);
   const totalUsers = users.rows[0].c;
-  const starsSpent = Number(spent.rows[0].s);
-  const starsEarned = Number(earned.rows[0].s);
-  const botNet = Number(deposits.rows[0].s) - Number(wd.rows[0].s);
+  const starsSpent = String(spent.rows[0].s);
+  const starsEarned = String(earned.rows[0].s);
+  const botNet = (BigInt(deposits.rows[0].s) - BigInt(wd.rows[0].s)).toString();
 
   const { rows: activeRows } = await pool.query(`
     select count(distinct x.tg_id)::int as c from (
@@ -51,10 +51,6 @@ export function registerAdmin(bot) {
     if (!data.startsWith('admin:')) return next();
     if (!isAdmin(ctx.from.id)) { await ctx.answerCbQuery('Нет прав', { show_alert: true }); return; }
 
-    if (data === 'admin:back') {
-      await ctx.editMessageText('Админ-панель', { reply_markup: adminMenuKb() });
-      return ctx.answerCbQuery();
-    }
 
     if (data === 'admin:stats') {
       const s = await getStats();
@@ -65,12 +61,27 @@ export function registerAdmin(bot) {
 
     if (data === 'admin:nft:add') {
       awaiting.set(ctx.from.id, { mode: 'nft_single' });
-      await ctx.editMessageText('Отправьте строку: Тип ; Ссылка\nТип: Snoop Dogg | Swag Bag | Snoop Cigar | Low Rider', { reply_markup: adminMenuKb() });
+      const typeList = Object.values(NFT_TYPES).join(' | ');
+      await ctx.editMessageText(`Отправьте строку: Тип ; Ссылка\nТип: ${typeList}` , { reply_markup: adminMenuKb() });
       return ctx.answerCbQuery();
     }
     if (data === 'admin:nft:batch') {
       awaiting.set(ctx.from.id, { mode: 'nft_batch' });
-      await ctx.editMessageText('Отправьте несколько строк, каждая: Тип ; Ссылка', { reply_markup: adminMenuKb() });
+      const allTypes = Object.values(NFT_TYPES);
+      let lines = [];
+      try {
+        const { rows } = await pool.query("select type, count(*)::int as total, sum(case when assigned=false then 1 else 0 end)::int as free from nfts group by type");
+        lines = allTypes.map(t => {
+          const r = rows.find(x => x.type === t);
+          const total = r?.total || 0;
+          const free = r?.free || 0;
+          return `- ${t} (свободно: ${free}, всего: ${total})`;
+        });
+      } catch {
+        lines = allTypes.map(t => `- ${t}`);
+      }
+      const msg = ['Отправьте несколько строк, каждая: Тип ; Ссылка', 'Доступные типы:', ...lines].join('\n');
+      await ctx.editMessageText(msg, { reply_markup: adminMenuKb() });
       return ctx.answerCbQuery();
     }
   });
@@ -86,7 +97,7 @@ export function registerAdmin(bot) {
     };
 
     const rows = p.mode === 'nft_single' ? [parse(lines[0])] : lines.map(parse);
-    const validTypes = new Set(['Snoop Dogg','Swag Bag','Snoop Cigar','Low Rider']);
+    const validTypes = new Set(Object.values(NFT_TYPES));
     const toInsert = rows.filter(r => r.type && r.link && validTypes.has(r.type));
 
     if (!toInsert.length) { await ctx.reply('Не удалось распознать данные. Формат: Тип ; Ссылка'); return; }
