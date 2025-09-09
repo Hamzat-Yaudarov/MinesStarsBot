@@ -11,21 +11,10 @@ import { registerGames } from './handlers/games.js';
 import { registerPayments } from './handlers/payments.js';
 import { registerWithdraw } from './handlers/withdraw.js';
 import { registerNfts } from './handlers/nfts.js';
-import { registerAdmin } from './handlers/admin.js';
 
 async function main() {
   await initDb();
   const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-
-  bot.use(async (ctx, next) => {
-    try {
-      if (ctx.from?.id) {
-        const { updateUser } = await import('./db/index.js');
-        await updateUser(ctx.from.id, { last_active_at: new Date().toISOString() });
-      }
-    } catch {}
-    return next();
-  });
 
   registerStart(bot);
   registerProfile(bot);
@@ -37,7 +26,6 @@ async function main() {
   registerPayments(bot);
   registerWithdraw(bot);
   registerNfts(bot);
-  registerAdmin(bot);
 
   await bot.launch();
   console.log('Mines Stars bot launched');

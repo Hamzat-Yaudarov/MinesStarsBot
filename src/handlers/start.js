@@ -8,18 +8,14 @@ export function registerStart(bot) {
     if (payload && /^\d+$/.test(payload)) ref = Number(payload);
     await getOrCreateUser(ctx, ref);
 
-    const { ADMIN_IDS } = await import('../config.js');
-    const isAdmin = ADMIN_IDS.includes(Number(ctx.from.id));
-    const rows = [
-      [MAIN_MENU.PROFILE, MAIN_MENU.MINE],
-      [MAIN_MENU.SELL, MAIN_MENU.SHOP],
-      [MAIN_MENU.CASES, MAIN_MENU.GAMES],
-      [MAIN_MENU.DEPOSIT, MAIN_MENU.WITHDRAW]
-    ];
-    if (isAdmin) rows.push(['🛠️ Админ-панель']);
     await ctx.reply('Добро пожаловать в Mines Stars! Выберите раздел ниже.', {
       reply_markup: {
-        keyboard: rows,
+        keyboard: [
+          [MAIN_MENU.PROFILE, MAIN_MENU.MINE],
+          [MAIN_MENU.SELL, MAIN_MENU.SHOP],
+          [MAIN_MENU.CASES, MAIN_MENU.GAMES],
+          [MAIN_MENU.DEPOSIT, MAIN_MENU.WITHDRAW]
+        ],
         resize_keyboard: true
       }
     });

@@ -10,4 +10,3 @@ export const BOT_USERNAME = process.env.BOT_USERNAME || '';
 export const ADMIN_REVIEW_CHAT = process.env.ADMIN_REVIEW_CHAT || '';
 export const ADMIN_DONE_CHAT = process.env.ADMIN_DONE_CHAT || '';
 export const ADMIN_NFT_REVIEW_CHAT = process.env.ADMIN_NFT_REVIEW_CHAT || '';
-export const ADMIN_IDS = (process.env.ADMIN_IDS || '').split(',').map(s => Number(s.trim())).filter(Boolean).concat(ADMIN_ID ? [ADMIN_ID] : []);
